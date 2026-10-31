@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ASPECTS, type AspectId } from "@/lib/aspects";
 import { STYLES, type StyleId } from "@/lib/styles";
 import type { ImageRecord } from "@/lib/types";
 import { Reveal } from "@/components/ui/Reveal";
 import { Activity } from "@/components/ui/Activity";
 import { ImageCard } from "./Tile";
-import { IconArrow, IconChevron } from "./icons";
+import { IconArrow, IconChevron, IconSpark } from "./icons";
 
 const PAGE_SIZE = 9;
 
@@ -23,7 +22,6 @@ function bentoFor(n: number, heroRight: boolean) {
   return { grid: "md:grid-cols-4 md:grid-rows-3", hero: `md:col-span-2 md:row-span-2 ${side}` };
 }
 
-type AspectFilter = "all" | AspectId;
 type StyleFilter = "all" | StyleId;
 
 function Segmented<T extends string>({
@@ -62,21 +60,26 @@ export function Gallery({
   onOpen,
   onDelete,
   onGoStudio,
+  onWriteTitles,
+  writingTitles,
 }: {
   library: ImageRecord[] | null;
   onOpen: (image: ImageRecord, list: ImageRecord[]) => void;
   onDelete: (image: ImageRecord) => void;
   onGoStudio: () => void;
+  /** Write quote titles for every image that has none. */
+  onWriteTitles: () => void;
+  writingTitles: boolean;
 }) {
-  const [aspect, setAspect] = useState<AspectFilter>("all");
   const [style, setStyle] = useState<StyleFilter>("all");
   const [page, setPage] = useState(0);
 
   const filtered = useMemo(
-    () => (library ?? []).filter((r) => (aspect === "all" || r.aspect === aspect) && (style === "all" || r.styleId === style)),
-    [library, aspect, style],
+    () => (library ?? []).filter((r) => style === "all" || r.styleId === style),
+    [library, style],
   );
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const untitled = (library ?? []).filter((r) => !r.title).length;
   const current = Math.min(page, pages - 1);
   const items = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
   const bento = bentoFor(items.length, current % 2 === 1);
@@ -92,10 +95,6 @@ export function Gallery({
     return () => window.removeEventListener("keydown", onKey);
   }, [pages]);
 
-  const filterAspect = (v: AspectFilter) => {
-    setAspect(v);
-    setPage(0);
-  };
   const filterStyle = (v: StyleFilter) => {
     setStyle(v);
     setPage(0);
@@ -112,12 +111,14 @@ export function Gallery({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Segmented
-            label="Filter by frame"
-            value={aspect}
-            onChange={filterAspect}
-            options={[{ id: "all", label: "All sizes" }, ...ASPECTS.map((a) => ({ id: a.id, label: a.label }))]}
-          />
+          {library && (untitled > 0 || writingTitles) && (
+            <button type="button" onClick={onWriteTitles} disabled={writingTitles} className="chip action-pill disabled:opacity-80">
+              <span className="disc bg-amber-soft text-amber">
+                {writingTitles ? <Activity size={16} tone="#d9822b" blade="#fbf1e6" label="Writing titles" /> : <IconSpark size={13} />}
+              </span>
+              {writingTitles ? "Writing titles…" : `Add titles to ${untitled} image${untitled === 1 ? "" : "s"}`}
+            </button>
+          )}
           <Segmented
             label="Filter by style"
             value={style}
@@ -159,17 +160,17 @@ export function Gallery({
         <Reveal from="scale" className="bezel flex flex-1">
           <div className="bezel-core flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
             <p className="max-w-[420px] text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink">
-              {library.length ? "No images match these filters" : "No images yet"}
+              {library.length ? "No images in this style" : "No images yet"}
             </p>
             <p className="-mt-2 max-w-[380px] text-[15px] text-ink-soft">
-              {library.length ? "Try a different size or style." : "Images you generate in the Studio are saved here."}
+              {library.length ? "Pick another style, or show them all." : "Images you generate in the Studio are saved here."}
             </p>
             <button
               type="button"
-              onClick={library.length ? () => (filterAspect("all"), filterStyle("all")) : onGoStudio}
+              onClick={library.length ? () => filterStyle("all") : onGoStudio}
               className="group flex items-center gap-3 rounded-full bg-ink py-1.5 pl-5 pr-1.5 text-[13.5px] font-medium text-paper transition-transform duration-500 ease-fluid active:scale-[0.98]"
             >
-              {library.length ? "Clear filters" : "Go to Studio"}
+              {library.length ? "Show all styles" : "Go to Studio"}
               <span className="grid h-8 w-8 place-items-center rounded-full bg-paper/10 transition-transform duration-500 ease-fluid group-hover:-translate-y-px group-hover:translate-x-0.5 group-hover:scale-105">
                 <IconArrow />
               </span>
@@ -178,7 +179,7 @@ export function Gallery({
         </Reveal>
       ) : (
         <div
-          key={`${current}-${aspect}-${style}`}
+          key={`${current}-${style}`}
           className={`grid min-h-0 flex-1 grid-cols-2 gap-3 ${bento.grid}`}
         >
           {items.map((image, i) => {

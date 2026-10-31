@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 /**
  * Lays out `count` equal-aspect tiles so they all fit inside the available box
  * without scrolling, choosing the column count that yields the largest tiles.
+ * Tiles are anchored to the top-left so they line up under the header.
  */
 export function FitGrid({ count, ratio, gap = 12, children }: { count: number; ratio: number; gap?: number; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
@@ -33,10 +34,10 @@ export function FitGrid({ count, ratio, gap = 12, children }: { count: number; r
   }
 
   return (
-    <div ref={box} className="flex min-h-0 flex-1 items-center justify-center">
+    <div ref={box} className="flex min-h-0 flex-1 items-start justify-start">
       {best.tileW > 0 && (
         <div
-          className="grid justify-center"
+          className="grid content-start justify-start"
           style={{ gap, gridTemplateColumns: `repeat(${best.cols}, ${Math.floor(best.tileW)}px)` }}
         >
           {children}

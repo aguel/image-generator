@@ -58,6 +58,18 @@ export async function removeImage(id: string) {
   });
 }
 
+/** Merges `patch` into one library record. Returns the updated record, or null if it doesn't exist. */
+export async function updateImage(id: string, patch: Partial<Omit<ImageRecord, "id" | "file">>) {
+  return withLock(async () => {
+    const lib = await readLibrary();
+    const i = lib.findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    lib[i] = { ...lib[i], ...patch };
+    await writeLibrary(lib);
+    return lib[i];
+  });
+}
+
 export function isSafeId(id: string) {
   return /^[a-zA-Z0-9_-]{1,64}$/.test(id);
 }

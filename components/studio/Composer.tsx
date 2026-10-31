@@ -6,13 +6,7 @@ import { STYLES, type StyleId } from "@/lib/styles";
 import { spring, interpolate, FPS, SPRINGS } from "@/lib/motion";
 import { Reveal } from "@/components/ui/Reveal";
 import { Activity } from "@/components/ui/Activity";
-import { IconSpark } from "./icons";
-
-const SUGGESTIONS = [
-  { label: "Welder", prompt: "A welder lifting his mask in a sparks-filled shipyard workshop" },
-  { label: "Tailor", prompt: "An elderly tailor threading a needle at a cluttered market stall" },
-  { label: "Street cook", prompt: "A street-food cook flipping noodles over a roaring wok at night" },
-];
+import { IconSpark, StyleIcon } from "./icons";
 
 export interface ComposerState {
   prompt: string;
@@ -128,8 +122,8 @@ export function Composer({
       }}
     >
       {/* Prompt */}
-      <Reveal delay={4} className="bezel flex min-h-[200px] flex-1 flex-col transition-shadow duration-500 ease-fluid focus-within:shadow-[inset_0_0_0_1.5px_rgba(14,14,13,0.25)] lg:min-h-[150px]">
-        <div className="bezel-core flex min-h-0 flex-1 flex-col px-4 pb-3.5 pt-4">
+      <Reveal delay={4} className="bezel flex min-h-[160px] flex-1 flex-col transition-shadow duration-500 ease-fluid focus-within:shadow-[inset_0_0_0_1.5px_rgba(14,14,13,0.25)] lg:max-h-[200px] lg:min-h-[112px] short:min-h-[100px]">
+        <div className="bezel-core flex min-h-0 flex-1 flex-col px-4 pb-3 pt-3.5 short:pt-3">
           <div className="flex items-baseline justify-between">
             <label htmlFor="prompt" className="eyebrow">
               Prompt
@@ -148,26 +142,8 @@ export function Composer({
               }
             }}
             placeholder="Describe the scene: who is in it, what they are doing, and where."
-            className="mt-2 min-h-[72px] w-full flex-1 resize-none bg-transparent text-[16px] leading-[1.6] text-ink placeholder:text-ink-faint focus:outline-none"
+            className="mt-1.5 min-h-[56px] short:min-h-[48px] w-full flex-1 resize-none bg-transparent text-[16px] leading-[1.6] text-ink placeholder:text-ink-faint focus:outline-none"
           />
-          <div className="mt-2 flex items-center gap-1.5 overflow-hidden">
-            <span className="label mr-0.5 shrink-0">Try</span>
-            {SUGGESTIONS.map((s, i) => (
-              <Reveal
-                as="button"
-                key={s.label}
-                type="button"
-                delay={12 + i * 3}
-                from="scale"
-                spring="snappy"
-                title={s.prompt}
-                onClick={() => onChange({ prompt: s.prompt })}
-                className="chip shrink-0 rounded-full px-3 py-1 text-[12.5px]"
-              >
-                {s.label}
-              </Reveal>
-            ))}
-          </div>
         </div>
       </Reveal>
 
@@ -175,9 +151,11 @@ export function Composer({
       <Reveal delay={9} className="bezel shrink-0">
         <div className="bezel-core p-3.5 short:p-3">
           <span className="eyebrow">Style</span>
-          <div className="mt-2.5 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Style">
-            {STYLES.map((style) => {
+          <div className="mt-2.5 grid grid-cols-2 gap-2 short:mt-2 short:gap-1.5" role="radiogroup" aria-label="Style">
+            {STYLES.map((style, i) => {
               const active = style.id === state.styleId;
+              // An odd last card spans the row so the grid stays even.
+              const span = STYLES.length % 2 === 1 && i === STYLES.length - 1;
               return (
                 <button
                   key={style.id}
@@ -186,22 +164,14 @@ export function Composer({
                   aria-checked={active}
                   title={style.tagline}
                   onClick={() => onChange({ styleId: style.id })}
-                  className={`flex items-center gap-3 rounded-[14px] p-2 text-left transition-[background-color,box-shadow] duration-500 ease-fluid ${
-                    active
-                      ? "bg-paper shadow-[0_0_0_1.5px_var(--ink),0_10px_24px_-14px_rgba(14,14,13,0.45)]"
-                      : "tile"
-                  }`}
+                  className={`flex min-w-0 items-center gap-2.5 rounded-[14px] p-2 text-left short:gap-2 short:px-1.5 short:py-1 transition-[background-color,box-shadow] duration-500 ease-fluid ${
+                    span ? "col-span-2" : ""
+                  } ${active ? "bg-paper shadow-[0_0_0_1.5px_var(--ink),0_10px_24px_-14px_rgba(14,14,13,0.45)]" : "tile"}`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 overflow-hidden rounded-[10px]">
-                    {style.swatch.map((c) => (
-                      <span key={c} className="h-full flex-1" style={{ background: c }} />
-                    ))}
-                  </span>
+                  <StyleIcon style={style} className="h-10 w-10 rounded-[10px] short:h-8 short:w-8 short:rounded-[8px]" />
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-medium leading-tight text-ink">{style.name}</span>
-                    <span className="mt-0.5 block truncate text-[12px] leading-tight text-ink-soft">
-                      {style.tagline}
-                    </span>
+                    <span className="block truncate text-[14px] font-medium leading-tight text-ink short:text-[13px]">{style.name}</span>
+                    <span className="mt-0.5 block truncate text-[12px] leading-tight text-ink-soft">{style.tagline}</span>
                   </span>
                 </button>
               );

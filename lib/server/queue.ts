@@ -5,6 +5,7 @@ import { getStyle, type StyleId } from "../styles";
 import type { ImageRecord, QueueJob, QueueSnapshot } from "../types";
 import { addImage } from "./store";
 import { generateImage, imageModel } from "./openai";
+import { titleFor } from "./quote";
 
 /**
  * In-memory generation queue.
@@ -93,6 +94,10 @@ async function run(job: Internal) {
       file: `${id}.png`,
       createdAt: new Date().toISOString(),
     };
+    // The quote title is written from the finished photo, so it matches what is actually in the frame.
+    const title = await titleFor(job.prompt, style.name, { image: bytes, signal: job.controller.signal });
+    if (job.status !== "running") return;
+    if (title) record.title = title;
     await addImage(record, bytes);
     if (job.status === "running") {
       job.status = "done";
@@ -199,6 +204,22 @@ export function clearFinished() {
     if (s === "done" || s === "error" || s === "cancelled") state.jobs.delete(id);
   }
   state.order = state.order.filter((id) => state.jobs.has(id));
+}
+
+/** Drops finished jobs whose image was deleted, so the queue history no longer lists it. */
+export function forgetImage(imageId: string) {
+  for (const id of state.order) {
+    const job = state.jobs.get(id);
+    if (job?.image?.id === imageId) state.jobs.delete(id);
+  }
+  state.order = state.order.filter((id) => state.jobs.has(id));
+}
+
+/** Keeps the image copy held by finished jobs in step with the library (e.g. after a new title). */
+export function refreshImage(image: ImageRecord) {
+  for (const job of state.jobs.values()) {
+    if (job.image?.id === image.id) job.image = image;
+  }
 }
 
 export function snapshot(): QueueSnapshot {

@@ -1,6 +1,14 @@
 import type { AspectId } from "./aspects";
 import type { StyleId } from "./styles";
 
+/** A short inspirational line shown as the image's title. */
+export interface ImageTitle {
+  text: string;
+  /** Bible reference, person's name or proverb origin; empty for an original line. */
+  source: string;
+  kind: "verse" | "quote" | "proverb" | "original";
+}
+
 export interface ImageRecord {
   id: string;
   prompt: string;
@@ -11,6 +19,9 @@ export interface ImageRecord {
   model: string;
   file: string;
   createdAt: string;
+  title?: ImageTitle;
+  /** Earlier title texts (newest first), kept so "New quote" never repeats one. */
+  pastTitles?: string[];
 }
 
 export interface BackupSummary {

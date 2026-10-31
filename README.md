@@ -13,13 +13,31 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
 
 ## Features
 
-- **Styles.** Ships with **Cinematic**, a prompt template reverse-engineered from a reference set of
-  low-key, tungsten-lit workshop portraits (orange-and-teal grade, deep blacks, tack-sharp subject, creamy bokeh).
+- **Styles.** Ships with **Cinematic**, a prompt template built from a reference set of low-key workshop photographs.
+  It frames the scene as a wide-angle environmental shot (subject full-body or knees-up in their space, not a close-up
+  portrait), with a cool teal foreground over a mostly neutral, dark, uncluttered background, soft ambient fill light on
+  the face and body, natural skin and deep blacks. It asks for flagship optics: a high-resolution body with a premium fast
+  24–35mm prime, giving an ultra-sharp subject and smooth, creamy bokeh in the far background.
+  **Moonlight** is for night landscapes, modelled on a set of tropical lagoon scenes: a full moon with a soft halo in a deep
+  navy/teal sky, luminous turquoise water, warm amber-lit huts with golden reflections, silhouetted palms and wooden boats, rendered as a clean, noise-free, balanced HDR image.
+  **Night Paint** uses the same moonlit lagoon scene and palette as Moonlight, rendered as a luminous painting (visible
+  brushwork, soft painterly edges, glowing glazes, impasto highlights on the moon and lamps).
+  **Melancholy** is modelled on a set of golden-hour village scenes: low backlit sun through hazy, dusty air with god rays,
+  a warm amber and honey palette with muted sage foliage, soft lifted shadows, and quiet, nostalgic everyday moments
+  often seen from behind.
+  **Director's Cut** is a wide film still in a cavernous old workshop: characters facing each other across the frame,
+  shafts of light from high windows through dust and haze, warm sparks and lamps against cool teal-slate shadows.
+  **Solitude** is a wide, quiet moment of one person alone, in whatever setting the prompt describes (field, forest,
+  beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
   **Raw** sends your prompt untouched.
 - **Aspect ratios.** Landscape 3:2 (1536×1024), Square 1:1 (1024×1024), Portrait 2:3 (1024×1536).
 - **1–8 images per run.** Each image is its own request, so tiles finish independently. While waiting, each
   tile plays a Remotion "developing" composition (iris, scanner sweep, latent-image glow, film grain, frame counter)
   with a live timer.
+- **Quote titles.** When each image finishes, `OPENAI_COMPLETION_MODEL` looks at the photo and writes a short, uplifting
+  title tied to what is in it: a famous person's words (with their name) when a genuine quote fits, otherwise a Bible
+  verse (with its reference). Titles show on cards and in the viewer; "New quote" / "Write a title" (re)writes one. Older
+  images without a title get an "Add titles to N images" button in the Gallery.
 - **Generation queue.** Every image goes through a server-side queue. `GENERATION_CONCURRENCY` images generate at once,
   and up to `GENERATION_QUEUE_SIZE` more can wait. Requests that don't fit get a clear "queue is full" message (HTTP 429).
   Waiting tiles show their place in line, and queued or running jobs can be cancelled.
@@ -108,6 +126,8 @@ npm run icons
 | GET    | `/api/images`                 | List the library (newest first)                                 |
 | GET    | `/api/images/:id`             | PNG bytes (`?download` sets `Content-Disposition`)              |
 | DELETE | `/api/images/:id`             | Remove an image and its file                                    |
+| POST   | `/api/images/:id/title`       | Write a new quote title for an image; returns `{ image }`       |
+| POST   | `/api/images/titles`          | Write titles for every image that has none; returns `{ updated, failed, remaining }` |
 | GET    | `/api/config`                 | `{ model, completionModel, keyConfigured, concurrency, queueSize }`, with no secrets |
 | GET    | `/api/backup`                 | List snapshots (internal)                                       |
 | POST   | `/api/backup`                 | `{ label? }` creates a snapshot (internal)                      |

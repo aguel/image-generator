@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { IMAGES_DIR, isSafeId, readLibrary, removeImage } from "@/lib/server/store";
+import { forgetImage } from "@/lib/server/queue";
 
 export async function GET(request: Request, ctx: RouteContext<"/api/images/[id]">) {
   const { id } = await ctx.params;
@@ -26,5 +27,7 @@ export async function DELETE(_request: Request, ctx: RouteContext<"/api/images/[
   const { id } = await ctx.params;
   if (!isSafeId(id)) return Response.json({ error: "Invalid id" }, { status: 400 });
   const ok = await removeImage(id);
+  // Also drop it from the queue history, whether or not it was still in the library.
+  forgetImage(id);
   return ok ? Response.json({ ok: true }) : Response.json({ error: "Not found" }, { status: 404 });
 }

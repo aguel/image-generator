@@ -136,7 +136,7 @@ export function ImageCard({
       role="button"
       data-hover="off"
       tabIndex={0}
-      aria-label={`Open “${image.prompt}”`}
+      aria-label={`Open “${image.title?.text ?? image.prompt}”`}
       onClick={onOpen}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
       onPointerEnter={() => animateHover(1)}
@@ -176,9 +176,12 @@ export function ImageCard({
               {getStyle(image.styleId).name} · {aspect.label} {aspect.ratio}
             </span>
           )}
-          <p className={`line-clamp-2 text-white ${featured ? "mt-1 text-[18px] font-medium leading-snug tracking-[-0.01em]" : "text-[13px] leading-snug"}`}>
-            {image.prompt}
+          <p className={`line-clamp-2 text-white ${featured ? "mt-1 text-[19px] font-semibold leading-snug tracking-[-0.015em]" : "text-[13.5px] font-medium leading-snug"}`}>
+            {image.title?.text ?? image.prompt}
           </p>
+          {image.title?.source ? (
+            <p className={`mt-0.5 truncate text-white/70 ${featured ? "text-[13.5px]" : "text-[12px]"}`}>{image.title.source}</p>
+          ) : null}
         </div>
         <div className="flex shrink-0 gap-1.5" style={featured ? { opacity: "var(--h)" } : undefined}>
           <ActionButton label="View full size" onClick={onOpen}>

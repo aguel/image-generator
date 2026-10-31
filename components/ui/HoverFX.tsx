@@ -32,13 +32,17 @@ interface Motion {
 const REST: Pose = { s: 1, x: 0, y: 0 };
 const motions = new WeakMap<HTMLElement, Motion>();
 
-/** Bigger elements move less, so wide cards stay calm and small icons feel lively. */
+/**
+ * Bigger elements move less, so wide cards stay calm and small icons feel lively.
+ * Wide cards often sit in scrolling lists, so they only lift 1px and barely scale;
+ * those lists keep a few pixels of inner padding so nothing is clipped.
+ */
 function intensity(el: HTMLElement) {
   const w = el.offsetWidth;
   if (w <= 48) return { scale: 0.08, lift: 1, lean: 2 };
   if (w <= 160) return { scale: 0.035, lift: 1, lean: 2.5 };
   if (w <= 320) return { scale: 0.018, lift: 1.5, lean: 3 };
-  return { scale: 0.008, lift: 2, lean: 2 };
+  return { scale: 0.006, lift: 1, lean: 1.5 };
 }
 
 function targetFor(el: HTMLElement, m: Motion): Pose {

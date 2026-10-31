@@ -38,6 +38,8 @@ See `README.md` for features, API and data layout. This file covers the conventi
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
 - **Backup API** endpoints must call `guardInternal(request)` first.
+- **Deleting an image** (`DELETE /api/images/:id`) also calls `forgetImage()` in the queue, so the job leaves the Queue
+ history; `Studio` filters deleted ids from the snapshot until the next poll.
 
 ## Motion: everything animates with Remotion
 
@@ -55,9 +57,13 @@ See `README.md` for features, API and data layout. This file covers the conventi
   `data-hover="off"` if it has its own hover animation (as `ImageCard` does). Do not set inline `scale` / `translate` on
   interactive elements yourself.
 - **Confirmation dialogs** (`components/ui/ConfirmDialog.tsx`) render the whole card as a Remotion composition
-  (`ConfirmScene`) inside a `<Player>`. Card, glyph, title, body and buttons are choreographed with `useCurrentFrame()`.
-  The buttons are real DOM buttons passed as callbacks through `inputProps`. The composition height comes from
-  `estimateHeight()`, so keep titles and bodies short. Every confirmation goes through `setConfirm({...})` in `Studio.tsx`.
+  (`ConfirmScene`) inside a `<Player>`. Layout: a top **stage** (the `image` being acted on, opened with a shutter-style
+  clip wipe and a slow settle, with the icon badge overlapping its edge; or, with no image, the animated `ConfirmGlyph` on a
+  flat tint with looping ripples), then the title (words rise one by one), the body, an optional `details` row (up to three
+  label/value pairs), and full-width Cancel (Esc) / confirm (↵) buttons. The timeline is documented on `ConfirmScene`.
+  The buttons are real DOM buttons passed through `inputProps`. The composition height comes from `estimateHeight()`,
+  so keep titles and bodies short. Every confirmation goes through `setConfirm({...})` in `Studio.tsx`; pass `image`
+  and `details` whenever they exist.
 - Respect `prefers-reduced-motion`. The hooks already short-circuit to the end state.
 
 ## Layout and design system
@@ -72,13 +78,17 @@ See `README.md` for features, API and data layout. This file covers the conventi
   client state (`view` in `Studio.tsx`). Prompts-menu state (`PromptLab`) lives in `Studio`, so it survives switching views. The Studio canvas shows only the latest roll, fitted with
   `FitGrid` (it chooses the column count that gives the largest tiles with no overflow).
 - **Gallery** (`Gallery.tsx`) is a paginated bento (9 per page: one 2×2 hero plus eight cells; sparser pages use smaller
-  grids through `bentoFor`). It has aspect and style filters, ←/→ paging, and a hero that alternates sides on each page.
+  grids through `bentoFor`). It has a style filter (no size filter), ←/→ paging, and a hero that alternates sides on each page.
   Cells crop with `object-cover`, and the lightbox shows the full frame.
 - **Tokens** live in `app/globals.css`: `--paper` (white), `--canvas`, `--ink`, `--ink-soft`, `--ink-faint`, `--hair`, `--amber`,
   `--amber-soft`, `--teal`, `--danger`. They map to Tailwind (`bg-paper`, `text-ink-soft`, …). Do not hard-code hex in
   components.
 - **Double-bezel** containers use `.bezel` (outer tray) with `.bezel-core` (inner white plate); override the radius with `[--r:30px]`.
   Use `.eyebrow` for control-group headings and `.label` for secondary metadata.
+- **Pill surfaces** (`globals.css`): `.chip` is a raised white pill with a top highlight and a soft shadow; `.island` is a
+  larger raised capsule for header status docks (`BatchStatus`: a spring-animated progress ring, two-line status, and a
+  Gallery button with a nested arrow); `.action-pill` (with `.danger`) is a pill holding an icon `.disc`, used for
+  "Clear list" and "Cancel all" (the disc fills red on hover).
 - **No grey fills on controls.** Segmented controls use `.seg` (a white track on a hairline ring) with the active option in
   solid ink (`bg-ink text-paper`). Small pills such as suggestions, status and secondary actions use `.chip`. Selectable
   option tiles use `.tile`. Disabled primary buttons become a white card with faint text and an amber icon tile, not a
@@ -94,11 +104,58 @@ See `README.md` for features, API and data layout. This file covers the conventi
   buttons, pass `tone="#ffffff" blade="#0e0e0d"`. `<Stage cover>` resizes a composition to fill its box.
 - The floating Next.js dev indicator is disabled in `next.config.ts` (`devIndicators: false`). Keep it off.
 
+## Quote titles
+
+- `lib/server/quote.ts` (`titleFor`) asks `OPENAI_COMPLETION_MODEL`, through the shared `chatJson()` helper in
+ `lib/server/enhance.ts`, for `{ text, source, kind }`. It prefers a famous person's quote (kind `quote`) and falls back
+ to a Bible verse (kind `verse`); the line must be uplifting, tied to something concrete in the photo, and short
+ (ideally 3–10 words, `MAX_WORDS` 12; a longer pick is sent back once for a shorter one). The finished
+ image is sent with the request (`chatJson({ image })`, low detail) so the line matches the frame; if the vision call
+ fails it retries from the prompt alone. The system prompt forbids invented or misattributed wording. It returns null on
+ any failure, so a missing title never blocks an image. Older records may still carry `proverb` / `original` kinds.
+- The queue writes the title right after `generateImage` returns (it needs the pixels) and stores it on
+ `ImageRecord.title`. `POST /api/images/:id/title` rewrites it via `titleForRecord()` (reads the stored file), passing
+ the current title and `ImageRecord.pastTitles` (last 8) as lines to avoid, so "New quote" always changes; it then
+ calls `updateImage` in `store.ts` and `refreshImage()` in the queue so finished jobs carry the new title. `Studio` keeps a `titles` override map so tiles built from queue snapshots show rewritten titles.
+- Cards show the title (falling back to the prompt) with its source. The viewer shows it large above the prompt, with
+  "New quote" / "Write a title".
+- Backfill: `POST /api/images/titles` titles every untitled image (3 at a time) and is triggered by the Gallery's
+  "Add titles to N images" action pill, which only appears while some images have no title.
+
+## Views
+
+- **Studio**: the Composer on the left, and the latest batch on the right. `FitGrid` anchors tiles to the top-left.
+- **Prompts** (`PromptsView`): an idea bar at the top, a card grid of results (no index numbers), and a floating action bar
+  (select all / deselect all, style, aspect, images each, Queue). Enter submits the idea.
+- **Queue** (`QueueView`): a header with "Cancel waiting" (soft red) and "Clear finished" (white) `QueueAction`
+ buttons, each a 52px pill with a two-line label (action plus the job count it touches) and a trailing icon disc that fills
+ on hover; when there is nothing to act on they read "Nothing waiting" / "Nothing to clear" as quiet disabled cards; a summary bar with
+  per-slot segments for concurrency, a waiting-capacity bar, and a stack of recent thumbnails; and one job list with
+  filter tabs (All / Active / Done / Failed), sticky group headings (In progress / Up next / Finished) and aligned
+  columns (thumbnail, prompt, status pill, time, actions) that share the `ROW` grid template.
+- **Scrolling lists** that contain hoverable cards keep at least 8px of inner padding on every side (`pt-2 px-4`), so the
+  `HoverFX` lift and scale never clip. Wide cards only lift 1px.
+- **Gallery**: a paginated bento.
+
 ## Styles
 
-`lib/styles.ts` holds the presets. **Cinematic** reproduces the reference photos: low-key practical light (fluorescent and
-tungsten), an orange-and-teal grade, deep blacks with a slight matte lift, high micro-contrast, a razor-thin focus plane with
-creamy bokeh, and gritty, lived-in environments. To tune it, edit `CINEMATIC_TEMPLATE`. Keep it subject-agnostic: the user's
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
+halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with low-to-medium contrast, open shadows with no crushed blacks, no vignette and
+natural saturation. The setting and viewpoint always come from the prompt (farm, village, interior looking out...); the lagoon
+is only the fallback when no place is named, and water appears only when described. `MOONLIGHT_SCENE` holds the shared
+setting and composition lines; Night Paint keeps its own glowing, magical
+moon, water, lighting and palette lines. **Melancholy**, **Director's Cut** and **Solitude** share `BRIGHT_HDR`, a
+natural HDR finish that lifts the backlit subject to a clear exposure while the bright background (sun, sky, haze,
+windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds. The Composer shows every style as a
+card (style icon, name, tagline) in a two-column grid; an odd last card spans the row. The prompt card is capped
+(`lg:max-h-[200px]`) so the style cards fit; there are no prompt suggestions. The Prompts action bar uses the compact
+`StylePicker` dropdown (`components/studio/StylePicker.tsx`). Every style has its own glyph in `STYLE_GLYPHS`
+(`components/studio/icons.tsx`), drawn by `<StyleIcon>` in the style's accent on its darkest swatch tone; a new style
+needs a glyph there. A retired id (for example an old "dramatic" record) falls back to
+Cinematic through `getStyle()`. **Cinematic** is framed as a wide-angle environmental shot (24–35mm, subject full-body or knees-up taking a third to half of the frame height, never a tight portrait) and reproduces the reference photos: low-key practical light (fluorescent and
+tungsten), a cool teal foreground over a mostly neutral, dark background with only a faint teal hint (skin stays natural, slightly cooled), an ultra-sharp subject opened up by soft ambient fill on the face and body, deep blacks with a slight matte lift,
+high micro-contrast, a razor-thin focus plane with creamy bokeh, and a minimal, uncluttered background (no crowds or busy
+props behind the subject; grit stays on the subject and their surface). To tune it, edit `CINEMATIC_TEMPLATE`. Keep it subject-agnostic: the user's
 prompt supplies the subject, and the template supplies only look and feel.
 
 ## Data

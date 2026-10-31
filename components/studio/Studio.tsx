@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage } from "@/components/remotion/Stage";
 import { Viewfinder } from "@/components/remotion/compositions";
 import { Reveal } from "@/components/ui/Reveal";
-import { Activity } from "@/components/ui/Activity";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ui/ConfirmDialog";
 import { Toasts, type Toast } from "@/components/ui/Toasts";
 import { HoverFX } from "@/components/ui/HoverFX";
@@ -19,9 +18,9 @@ import { PromptsView, INITIAL_LAB, type PromptLab } from "./PromptsView";
 import { FitGrid } from "./FitGrid";
 import { Gallery } from "./Gallery";
 import { Lightbox } from "./Lightbox";
-import { BackupDrawer } from "./BackupDrawer";
+import { BackupDrawer, formatBytes } from "./BackupDrawer";
 import { NavIsland, type View } from "./NavIsland";
-import { IconGrid } from "./icons";
+import { BatchStatus } from "./BatchStatus";
 
 const SETTINGS_KEY = "darkroom:composer";
 const DEFAULTS: ComposerState = { prompt: "", styleId: DEFAULT_STYLE, aspect: DEFAULT_ASPECT, count: 4 };
@@ -50,7 +49,10 @@ export function Studio() {
   const [library, setLibrary] = useState<ImageRecord[] | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [deleted, setDeleted] = useState<Set<string>>(() => new Set());
+  // Titles written after an image finished, so queue snapshots (which hold the original record) show them too.
+  const [titles, setTitles] = useState<Record<string, ImageRecord["title"]>>({});
   const [lab, setLab] = useState<PromptLab>(INITIAL_LAB);
+  const [writingTitles, setWritingTitles] = useState(false);
   const [config, setConfig] = useState<{ model: string; completionModel: string; keyConfigured: boolean } | null>(null);
   const [viewer, setViewer] = useState<{ ids: string[]; id: string } | null>(null);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
@@ -207,6 +209,12 @@ export function Studio() {
         body: "It will be removed from your gallery. Any backups you have made keep their copy.",
         confirmLabel: "Delete image",
         variant: "delete",
+        image: `/api/images/${image.id}`,
+        details: [
+          { label: "Style", value: getStyle(image.styleId).name },
+          { label: "Size", value: `${image.width} × ${image.height}` },
+          { label: "Created", value: new Date(image.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" }) },
+        ],
         onConfirm: async () => {
           await api(`/api/images/${image.id}`, { method: "DELETE" });
           setLibrary((lib) => (lib ?? []).filter((r) => r.id !== image.id));
@@ -218,10 +226,12 @@ export function Studio() {
             return { ids, id: v.id === image.id ? ids[Math.min(i, ids.length - 1)] : v.id };
           });
           setDeleted((d) => new Set(d).add(image.id));
+          // The server drops the job from its history too; refresh so the Queue list updates now.
+          queue.refresh();
           toast("Image deleted.");
         },
       }),
-    [toast],
+    [toast, queue],
   );
 
   /* ---------- backups ---------- */
@@ -257,9 +267,14 @@ export function Studio() {
   const askRestore = (b: BackupSummary) =>
     setConfirm({
       title: "Restore this backup?",
-      body: `Your gallery will be replaced with the ${b.imageCount} image${b.imageCount === 1 ? "" : "s"} from ${new Date(b.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}. Create a new backup first if you want to keep what you have now.`,
-      confirmLabel: "Restore",
+      body: "Your gallery will be replaced with the images in this backup. Create a new backup first if you want to keep what you have now.",
+      confirmLabel: "Restore backup",
       variant: "restore",
+      details: [
+        { label: "Images", value: String(b.imageCount) },
+        { label: "Size", value: formatBytes(b.bytes) },
+        { label: "Saved", value: new Date(b.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) },
+      ],
       onConfirm: async () => {
         await api(`/api/backup/${b.id}/restore`, { method: "POST" });
         setBatches([]);
@@ -274,6 +289,11 @@ export function Studio() {
       body: "This backup and the image copies inside it will be permanently removed. Your gallery is not affected.",
       confirmLabel: "Delete backup",
       variant: "delete",
+      details: [
+        { label: "Images", value: String(b.imageCount) },
+        { label: "Size", value: formatBytes(b.bytes) },
+        { label: "Saved", value: new Date(b.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) },
+      ],
       onConfirm: async () => {
         await api(`/api/backup/${b.id}`, { method: "DELETE" });
         setBackups((list) => (list ?? []).filter((x) => x.id !== b.id));
@@ -301,8 +321,9 @@ export function Studio() {
     const byId = new Map(snap.jobs.map((j) => [j.id, j]));
     return batch.jobIds
       .map((id) => byId.get(id))
-      .filter((j): j is QueueJob => Boolean(j) && !(j!.image && deleted.has(j!.image.id)));
-  }, [batch, snap, deleted]);
+      .filter((j): j is QueueJob => Boolean(j) && !(j!.image && deleted.has(j!.image.id)))
+      .map((j) => (j.image && titles[j.image.id] ? { ...j, image: { ...j.image, title: titles[j.image.id] } } : j));
+  }, [batch, snap, deleted, titles]);
   const batchPending = batchJobs.filter((j) => j.status === "queued" || j.status === "running").length;
   const batchDone = batchJobs.filter((j) => j.status === "done").length;
   const elsewhere = running + waiting - batchPending;
@@ -311,6 +332,11 @@ export function Studio() {
     const byId = new Map(library.map((r) => [r.id, r]));
     return viewer.ids.map((id) => byId.get(id)).filter((r): r is ImageRecord => Boolean(r));
   }, [viewer, library]);
+  // Queue history without deleted images (the next poll confirms the server dropped them).
+  const queueSnap = useMemo(
+    () => (snap && deleted.size ? { ...snap, jobs: snap.jobs.filter((j) => !(j.image && deleted.has(j.image.id))) } : snap),
+    [snap, deleted],
+  );
   const viewerIndex = viewer ? viewerImages.findIndex((r) => r.id === viewer.id) : -1;
 
   return (
@@ -352,34 +378,14 @@ export function Studio() {
                       {batch ? batch.title : "Your images will appear here"}
                     </h1>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {batch && (
-                      <span className="chip flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px]">
-                        {batchPending > 0 ? (
-                          <>
-                            <Activity size={15} label="Generating" /> {batchDone} of {batchJobs.length} ready
-                          </>
-                        ) : (
-                          <>{batchDone === 1 ? "1 image ready" : `${batchDone} images ready`}</>
-                        )}
-                        {elsewhere > 0 && (
-                          <button type="button" onClick={() => setView("queue")} className="text-ink-faint underline-offset-2 hover:text-ink hover:underline">
-                            · {elsewhere} more in queue
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setView("gallery")}
-                      className="chip group flex h-9 items-center gap-2 rounded-full pl-3.5 pr-1.5 text-[13px]"
-                    >
-                      Open gallery
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-paper transition-transform duration-500 ease-fluid group-hover:scale-105">
-                        <IconGrid size={12} />
-                      </span>
-                    </button>
-                  </div>
+                  <BatchStatus
+                    done={batch ? batchDone : 0}
+                    total={batch ? batchJobs.length : 0}
+                    pending={batchPending}
+                    elsewhere={elsewhere}
+                    onQueue={() => setView("queue")}
+                    onGallery={() => setView("gallery")}
+                  />
                 </header>
 
                 {batch && batchJobs.length > 0 ? (
@@ -426,17 +432,39 @@ export function Studio() {
         ) : view === "queue" ? (
           <div key="queue" className="flex min-h-0 flex-1 flex-col">
             <QueueView
-              snap={snap}
+              snap={queueSnap}
               onCancel={cancelJob}
+              onCancelWaiting={(jobs) => Promise.all(jobs.map((j) => queue.cancel(j.id))).catch((e) => toast((e as Error).message, "error"))}
               onRetry={retry}
-              onOpen={(job) => job.image && openViewer(job.image, (snap?.jobs ?? []).flatMap((j) => (j.image && !deleted.has(j.image.id) ? [j.image] : [])))}
+              onOpen={(job) => job.image && openViewer(job.image, (queueSnap?.jobs ?? []).flatMap((j) => (j.image ? [j.image] : [])))}
               onClearFinished={() => queue.clearFinished().catch((e) => toast((e as Error).message, "error"))}
               onGo={setView}
             />
           </div>
         ) : (
           <div key="gallery" className="flex min-h-0 flex-1 flex-col">
-            <Gallery library={library} onOpen={openViewer} onDelete={askDelete} onGoStudio={() => setView("studio")} />
+            <Gallery
+              library={library}
+              onOpen={openViewer}
+              onDelete={askDelete}
+              onGoStudio={() => setView("studio")}
+              writingTitles={writingTitles}
+              onWriteTitles={async () => {
+                setWritingTitles(true);
+                try {
+                  const r = await api<{ updated: number; failed: number }>("/api/images/titles", { method: "POST" });
+                  await loadLibrary();
+                  toast(
+                    r.failed ? `Added ${r.updated} titles; ${r.failed} could not be written, try again.` : `Added titles to ${r.updated} image${r.updated === 1 ? "" : "s"}.`,
+                    r.failed ? "info" : "success",
+                  );
+                } catch (e) {
+                  toast((e as Error).message, "error");
+                } finally {
+                  setWritingTitles(false);
+                }
+              }}
+            />
           </div>
         )}
       </main>
@@ -447,6 +475,21 @@ export function Studio() {
         onClose={() => setViewer(null)}
         onNavigate={(i) => setViewer((v) => (v ? { ...v, id: viewerImages[i]?.id ?? v.id } : v))}
         onDelete={askDelete}
+        onRetitle={async (image) => {
+          try {
+            const { image: updated } = await api<{ image: ImageRecord }>(`/api/images/${image.id}/title`, { method: "POST" });
+            setLibrary((lib) => (lib ?? []).map((r) => (r.id === updated.id ? updated : r)));
+            setTitles((t) => ({ ...t, [updated.id]: updated.title }));
+          } catch (e) {
+            toast((e as Error).message, "error");
+          }
+        }}
+        onReuse={(image) => {
+          updateSettings({ prompt: image.prompt, styleId: getStyle(image.styleId).id, aspect: getAspect(image.aspect).id });
+          setViewer(null);
+          setView("studio");
+          toast("Prompt, style and aspect ratio loaded into the Studio.", "success");
+        }}
       />
       <BackupDrawer
         open={vaultOpen}
