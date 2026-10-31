@@ -38,7 +38,7 @@ See `README.md` for features, API and data layout. This file covers the conventi
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
 - **Detail pass**: every generated image goes through `finishImage()` (`lib/server/finish.ts`, `sharp`) before it is saved: a
- light luminance unsharp mask whose strength comes from `StylePreset.finish` (`ultra` Portrait, `crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
+ light luminance unsharp mask whose strength comes from `StylePreset.finish` (`ultra` Portrait / Focus, `crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
  Director's Cut, `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
  only IHDR/PLTE/tRNS/IDAT/IEND and colour chunks are kept, so C2PA `caBX` content credentials, EXIF, XMP, text and
  time chunks never reach `data/images/`. Keep the sharpen below the level that makes halos.
@@ -157,9 +157,10 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 ## Styles
 
-`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape, Portrait and Raw.
-**Portrait** is an extreme close-up in a horizontal frame (its `aspect: "landscape"` switches the pickers to Landscape when chosen, and the user can still change it): a studio setup of a raking side key plus a "Fill and ambient light" line that opens up the dark areas of the person (never the near-black background), a heavily muted grade with dark brown skin unless the prompt names another complexion (a dark complexion, not dark exposure), a "Facial contours" line, very high local
-contrast held in fine detail rather than broad shadows, and every pore and wrinkle resolved. It uses `peopleSharp(...)` but skips `SUBJECT_HDR` and `creamyBokeh`, and its detail pass is its own `ultra` level. `PORTRAIT_SMOKE` (emphasised, sculptural smoke) is added only when `SMOKE_SOURCE` finds smoke
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape, Portrait, Focus and Raw.
+**Focus** (internal id `heritage`, kept because saved images store it) is a fine-art environmental portrait, reverse-engineered from four references documented above its template: one or two people in traditional dress, framed from about the knees or waist up by default because a full-body face is too few pixels to hold fine detail, a studio-quality soft key on location (people about two stops above a low-key slate-teal and moss background), warm brown skin, and rich colour reserved for textiles. A "Human detail" line and the `ultra` detail pass make every person ultra-sharp. It is composed for a horizontal frame (the references are mostly vertical, but the user wants landscape): its `aspect: "landscape"` switches the pickers to Landscape when chosen, and it passes a darker background to `subjectHdr(...)`.
+**Portrait** is an extreme close-up in a horizontal frame (its `aspect: "landscape"` switches the pickers to Landscape when chosen, and the user can still change it): a studio setup of a raking side key plus a "Fill and ambient light" line that opens up the dark areas of the person (never the near-black background), a heavily muted grade with chocolate brown skin unless the prompt names another complexion (a dark complexion, not dark exposure), high contrast reserved for the "Facial contours" line (skin between the contours, hair, hands and clothing stay moderate),
+and every pore and wrinkle resolved. It uses `peopleSharp(...)` but skips `SUBJECT_HDR` and `creamyBokeh`, and its detail pass is its own `ultra` level. `PORTRAIT_SMOKE` (emphasised, sculptural smoke) is added only when `SMOKE_SOURCE` finds smoke
 or something that makes it in the prompt; every other Portrait lists smoke in its Avoid line.
 **Landscape** is professional Philippine landscape photography: cinematic realistic sky, a smooth editorial HDR balance,
 and front-to-back sharpness at f/8–f/11 from hyperfocal focus (so it deliberately skips `PEOPLE_SHARP` / `creamyBokeh` and
@@ -170,7 +171,7 @@ Philippine too), and the Prompts enhancer writes Filipino people and Philippine 
 sets Filipino headwear (rounded-crown buri/straw farmer's hat, buntal hat, cap, bimpo towel) and every Avoid list includes
 `NOT_PHILIPPINES` (no pointed conical Vietnamese nón lá hats or other countries' clothing unless described). Every style also ends with `NATURAL_ANATOMY` (correct heads, limbs, hands, feet and faces; believable interactions and geometry)
 and starts its Avoid list with `AI_ARTEFACTS` (extra limbs or heads, distorted faces, fused fingers, duplicated people,
-garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, dim god rays through thin haze, an overall rustic, muted, matte tone (aged wood, rust, faded ochre and dull olive, dusty parchment lights, dark umber background, no golden glow, cool cast or flat sepia filter), with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters clearly the
+garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, dim god rays through thin haze, an overall strongly rustic, matte tone (aged wood, rust, burnt sienna and ochre, dusty parchment lights, dark umber background, no golden glow, cool cast or flat sepia filter), earth-toned haze and visible dust speckles in the same colours (airborne particles, kept off faces), a "Darkened surroundings" line like Focus (a pool of light on the people, the scene falling into shadow around them), with a grain-free digital finish and no clarity boost; a "Fill light" line keeps the characters clearly the
 brightest, clearest part and keeps that light off the background, which falls off into umber that holds faint detail) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
 halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with a
 balanced HDR finish that lifts the subject (no silhouettes), low-to-medium contrast, open shadows with no crushed blacks,
@@ -189,7 +190,7 @@ and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SU
 the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person and what they hold ultra-sharp and photorealistic, from a flagship
 body and premium prime stopped down to f/4–f/5.6; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)`
 (ultra-realistic, creamy bokeh with real lens texture in each style's own colours, the background placed far enough back to
-melt away at that aperture). Edit them once to change them everywhere: Moonlight and Raw use both too; Night Paint and Landscape do not; Portrait uses only `peopleSharp`. **Melancholy** and **Solitude**
+melt away at that aperture). Edit them once to change them everywhere: Moonlight and Raw use both too; Night Paint and Landscape do not; Focus uses both; Portrait uses only `peopleSharp`. **Melancholy** and **Solitude**
 also add `SOFT_BACKGROUND_ONLY`: haze, mist, glow, faded tones and blur live only in the background scenery; the people and the
 ground right around them stay crisp, with clear air in front of them and no whole-image soft-focus filter. Melancholy's
 haze is deliberately dramatic (thick, layered golden haze and bold god rays, kept behind the people). Solitude frames the

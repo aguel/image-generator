@@ -165,6 +165,13 @@ const STYLE_GLYPHS: Record<StyleId, ReactNode> = {
       <path d="M2.6 6.5c-.9-.9.9-1.7 0-2.6s.9-1.5.2-2.2" />
     </>
   ),
+  // Focus (id "heritage"): a woven basket with a handle.
+  heritage: (
+    <>
+      <path d="M2.8 7.5h10.4l-1.2 6H4z" />
+      <path d="M5 7.5a3 3 0 0 1 6 0M6.3 7.5l.5 6M9.7 7.5l-.5 6M3.4 10.5h9.2" />
+    </>
+  ),
   // Raw: a plain text cursor (the prompt as written).
   raw: (
     <>
