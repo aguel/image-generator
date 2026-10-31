@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // Hide the floating Next.js dev indicator; compile/runtime errors still surface.
+  devIndicators: false,
   turbopack: {
     rules: {
       "*.css": {
