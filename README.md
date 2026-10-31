@@ -50,7 +50,7 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   runs. Each finished image then sharpens into place from the top down. All of it is Remotion: `ImageDraft`.
 - **Quote titles.** When each image finishes, `OPENAI_COMPLETION_MODEL` looks at the photo and writes a short, uplifting
   title tied to what is in it: a famous person's words (with their name) when a genuine quote fits, otherwise a Bible
-  verse (with its reference). Titles show on cards and in the viewer; "New quote" / "Write a title" (re)writes one. Older
+  verse (with its reference). Every title is unique across your library. Titles show on cards and in the viewer; "New quote" / "Write a title" (re)writes one. Older
   images without a title get an "Add titles to N images" button in the Gallery.
 - **Generation queue.** Every image goes through a server-side queue. `GENERATION_CONCURRENCY` images generate at once,
   and up to `GENERATION_QUEUE_SIZE` more can wait. Requests that don't fit get a clear "queue is full" message (HTTP 429).

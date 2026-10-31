@@ -132,9 +132,9 @@ See `README.md` for features, API and data layout. This file covers the conventi
  fails it retries from the prompt alone. The system prompt forbids invented or misattributed wording. It returns null on
  any failure, so a missing title never blocks an image. Older records may still carry `proverb` / `original` kinds.
 - The queue writes the title right after `generateImage` returns (it needs the pixels) and stores it on
- `ImageRecord.title`. `POST /api/images/:id/title` rewrites it via `titleForRecord()` (reads the stored file), passing
- the current title and `ImageRecord.pastTitles` (last 8) as lines to avoid, so "New quote" always changes; it then
+ `ImageRecord.title`. `POST /api/images/:id/title` rewrites it via `titleForRecord()` (reads the stored file); it then
  calls `updateImage` in `store.ts` and `refreshImage()` in the queue so finished jobs carry the new title. `Studio` keeps a `titles` override map so tiles built from queue snapshots show rewritten titles.
+- **Titles are unique across the library.** `titleFor` lists used lines to the model (`LISTED_LINES`), then checks its pick against every current and past title (`ImageRecord.pastTitles`, last 8) and against lines other jobs have just `claimed` (on `globalThis`), ignoring case and punctuation and treating a shortened form as the same line. A repeat is sent back, up to `ATTEMPTS` tries in all; after that the image stays untitled rather than saving a repeat.
 - Cards show the title (falling back to the prompt) with its source. The viewer shows it large above the prompt, with
   "New quote" / "Write a title".
 - Backfill: `POST /api/images/titles` titles every untitled image (3 at a time) and is triggered by the Gallery's
