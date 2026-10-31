@@ -7,7 +7,7 @@ import { getStyle } from "@/lib/styles";
 import { FPS, interpolate, spring, usePresence, useSpringValues, SPRINGS } from "@/lib/motion";
 import type { ImageRecord } from "@/lib/types";
 import { downloadImage } from "./Tile";
-import { IconArrow, IconChevron, IconClose, IconDownload, IconFit, IconMinus, IconPlus, IconTrash, StyleIcon } from "./icons";
+import { IconArrow, IconChevron, IconClose, IconDownload, IconFit, IconMinus, IconPlus, IconRetry, IconTrash, StyleIcon } from "./icons";
 
 const MIN = 1;
 const MAX = 8;
@@ -68,6 +68,8 @@ export function Lightbox({
   onNavigate,
   onDelete,
   onReuse,
+  onRegenerate,
+  regenerating,
   onRetitle,
 }: {
   images: ImageRecord[];
@@ -77,6 +79,10 @@ export function Lightbox({
   onDelete: (image: ImageRecord) => void;
   /** Send the image's prompt, style and aspect ratio back to the Studio composer. */
   onReuse: (image: ImageRecord) => void;
+  /** Replace the image with a new one from the same prompt, style and aspect ratio. */
+  onRegenerate: (image: ImageRecord) => void;
+  /** Ids of images a job is currently replacing. */
+  regenerating: Set<string>;
   /** Write (or rewrite) the image's inspirational title. */
   onRetitle: (image: ImageRecord) => Promise<void>;
 }) {
@@ -506,6 +512,17 @@ export function Lightbox({
                 Download PNG
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-paper/10 transition-transform duration-500 ease-fluid group-hover:translate-y-0.5">
                   <IconDownload />
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={regenerating.has(image.id)}
+                onClick={() => onRegenerate(image)}
+                className="chip group flex h-[52px] items-center justify-between rounded-full py-1.5 pl-5 pr-1.5 text-[15px] disabled:opacity-60"
+              >
+                {regenerating.has(image.id) ? "Regenerating…" : "Regenerate"}
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-ink/[0.05] transition-transform duration-500 ease-fluid group-hover:-rotate-45">
+                  <IconRetry />
                 </span>
               </button>
               <button

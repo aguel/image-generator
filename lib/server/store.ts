@@ -47,6 +47,25 @@ export async function addImage(record: ImageRecord, bytes: Buffer) {
   });
 }
 
+/**
+ * Saves `record` in the library position of image `oldId`, then deletes the old image. The old file goes last, so
+ * a failure along the way can't lose both. If `oldId` is already gone, the record is simply added.
+ */
+export async function replaceImage(oldId: string, record: ImageRecord, bytes: Buffer) {
+  await ensureDirs();
+  await writeFile(join(IMAGES_DIR, record.file), bytes);
+  return withLock(async () => {
+    const lib = await readLibrary();
+    const i = lib.findIndex((r) => r.id === oldId);
+    const old = lib[i];
+    if (old) lib[i] = record;
+    else lib.unshift(record);
+    await writeLibrary(lib);
+    if (old) await unlink(join(IMAGES_DIR, old.file)).catch(() => undefined);
+    return record;
+  });
+}
+
 export async function removeImage(id: string) {
   return withLock(async () => {
     const lib = await readLibrary();

@@ -1,7 +1,9 @@
 // Style presets. Each style wraps the user's subject in a prompt template.
 // Add a new style by appending to STYLES — the UI picks it up automatically.
 
-export type StyleId = "cinematic" | "moonlight" | "night-paint" | "melancholy" | "directors-cut" | "solitude" | "landscape" | "raw";
+import type { AspectId } from "./aspects";
+
+export type StyleId = "cinematic" | "moonlight" | "night-paint" | "melancholy" | "directors-cut" | "solitude" | "landscape" | "portrait" | "raw";
 
 export interface StylePreset {
   id: StyleId;
@@ -11,18 +13,24 @@ export interface StylePreset {
   swatch: [string, string, string];
   build: (subject: string) => string;
   /** Detail pass applied after generation (lib/server/finish.ts). Defaults to "natural". */
-  finish?: "crisp" | "natural" | "gentle" | "none";
+  finish?: "ultra" | "crisp" | "natural" | "gentle" | "none";
+  /** Frame the pickers switch to when this style is chosen. It can still be changed afterwards. */
+  aspect?: AspectId;
 }
 
 /*
  * Shared by Cinematic, Melancholy, Director's Cut and Solitude: extra HDR light on the
- * people (background exposure left in balance), every person ultra-sharp from flagship
+ * people (background exposure left in balance unless a template says otherwise), every person ultra-sharp from flagship
  * optics, and smooth, creamy bokeh. Each template keeps its own look around these lines.
  */
 
-/** Lifts the people with a touch more HDR light while the background keeps its own balanced exposure. */
-const SUBJECT_HDR =
-  "HDR light on the people: every person in the frame gets an extra touch of HDR illumination — a soft, luminous lift on their faces, eyes, skin, hair, hands and clothing (as if a soft key light and a bracketed exposure for the subject were blended in), so they look luminous, read clearly and stand out as the best-lit part of the frame — the lift brightens them without softening, blurring or blooming any detail, with detail in both their highlights and shadows; the background keeps its own natural, balanced exposure and mood — not brightened to match the subject, not darkened to fake separation — so subject and background feel lit by the same world; seamless, halo-free blending around hair and edges, natural skin tones, no glowing outlines.";
+/**
+ * Lifts the people with a touch more HDR light. `background` says how the rest of the frame is exposed
+ * (by default it keeps its own balanced exposure; Director's Cut wants it darker).
+ */
+const subjectHdr = (background = "the background keeps its own natural, balanced exposure and mood — not brightened to match the subject, not darkened to fake separation — so subject and background feel lit by the same world") =>
+  `HDR light on the people: every person in the frame gets an extra touch of HDR illumination — a soft, luminous lift on their faces, eyes, skin, hair, hands and clothing (as if a soft key light and a bracketed exposure for the subject were blended in), so they look luminous, read clearly and stand out as the best-lit part of the frame — the lift brightens them without softening, blurring or blooming any detail, with detail in both their highlights and shadows; ${background}; seamless, halo-free blending around hair and edges, natural skin tones, no glowing outlines.`;
+const SUBJECT_HDR = subjectHdr();
 
 /**
  * Every person (and what they hold) ultra-sharp and photorealistic, as from a flagship camera with
@@ -171,7 +179,7 @@ const NIGHT_PAINT_TEMPLATE = (subject: string) =>
   ].join("\n");
 
 /**
- * Bright, natural HDR finish shared by Melancholy and Director's Cut:
+ * Bright, natural HDR finish used by Melancholy:
  * the backlit subject is lifted to a clear, well-exposed level and the bright
  * background (sun, sky, haze, windows) keeps its detail instead of clipping,
  * like a blended exposure bracket, without the grey, haloed "HDR" look.
@@ -217,13 +225,14 @@ const MELANCHOLY_TEMPLATE = (subject: string) =>
  * in a cavernous old workshop (two elderly craftsmen in conversation):
  *  - wide-angle establishing composition, characters full or three-quarter body, facing each other across the frame
  *  - shafts of volumetric light from high windows/skylights cutting through dust and haze, often between the characters
- *  - warm golden highlights (window light, sparks, bare bulbs) against cool blue-teal and slate shadows
- *  - cinematic contrast with a bright HDR finish (BRIGHT_HDR): characters lifted out of the shadows,
- *    bright windows and haze kept detailed; glowing dust motes and soft bokeh orbs in the depth
+ *  - a rustic, muted, matte tone: earthy and timeworn, with aged wood, rust, faded ochre and dull olive,
+ *    dusty parchment lights and dark umber shadows; low saturation, but neither cool nor a flat sepia filter
+ *  - its own exposure line rather than BRIGHT_HDR: characters lifted out of the shadows, the background held
+ *    about two stops lower and dark (also passed to subjectHdr); faint dust motes and dim bokeh orbs in the depth
  *  - tack-sharp characters with weathered faces and worn textures; the far background softened by haze
  *  - a clean, noise-free digital finish: smooth haze and skin, natural (not boosted) texture, no film grain
- *  - bright, readable exposure: a large soft fill on the characters and lifted dark areas everywhere
- *    (corners, ceiling, floor, machines), so nothing sinks into murky shadow
+ *  - separation by light: a large soft fill stays on the characters and the ground around them, while
+ *    corners, ceiling and far walls fall off into deep umber that holds faint detail and never reaches pure black
  *  - photorealistic texture over punch: a soft, natural tonal curve, true-to-life skin and materials,
  *    no HDR tone-mapping crunch or boosted local contrast
  */
@@ -234,20 +243,20 @@ const DIRECTORS_CUT_TEMPLATE = (subject: string) =>
     "Style: a wide cinematic frame from a modern prestige drama shot digitally — truly photorealistic, indistinguishable from a real photograph, deliberately staged like a director's frame, with the gravity and storytelling of an award-winning feature film; a clean, natural, high-end digital image, not a grainy film-stock look and not a punchy, processed or HDR-crunched look.",
     "Camera and lens: large-format digital cinema camera (ARRI Alexa 65 / Sony Venice class) at its base ISO, with a premium wide-angle cinema prime (24mm–35mm) stopped down to T4–T5.6 for high detail on the characters; clean, noise-free, grain-free capture with smooth tonal gradations; wide 3:2 / anamorphic-feel framing; straight verticals, minimal distortion; every character tack-sharp with high, photographic detail, the deep background gently softened by haze and creamy, textured bokeh.",
     "Composition: wide-angle establishing shot of a large, cavernous interior (old workshop, warehouse, mill, garage or barn); the characters shown full-body or three-quarter body, placed on the left and right thirds and facing each other in quiet conversation or shared work, with the light source or the main object between them; a sturdy worn table, bench or machine in the foreground; deep layered space receding behind them; high ceilings and tall windows visible.",
-    "Lighting: natural, motivated light — soft shafts of sunlight (god rays) streaming from high windows or skylights through dust and haze, cutting diagonally or straight down through the space; warm practical accents such as sparks from a welder or grinder, bare tungsten bulbs and pendant lamps; the characters gently rim-lit and side-lit, with soft, natural modelling on their faces; the far background glows softly with window light and haze.",
-    "Fill light: the characters are the brightest, clearest part of the frame after the light shafts — a large, soft fill (as if from a big bounce board or a diffused source just off camera, plus light bounced from the sunlit floor and walls) lights their faces, eyes, hands and clothing evenly from the front, so every feature and fabric reads clearly and their skin glows naturally; no part of a character falls into dark shadow. Dark areas of the scene (corners, the ceiling, under benches and machines, the floor, the far walls) are lifted with soft ambient light so their shapes, colours and materials stay visible; the space feels light-filled and airy, not dim or murky.",
-    "Atmosphere: soft, smooth, even haze in the air that makes the light shafts visible as clean, continuous beams; only a few sparse, softly out-of-focus dust motes in the beams, never a speckled or noisy layer; soft round bokeh orbs from distant lamps and sparks.",
-    "Colour grade: a gentle, natural teal-and-amber — soft golden and honey highlights in the light shafts, sparks and skin, against soft cool steel-blue, slate and teal tones in denim, metal and the softly lit interior; true-to-life skin tones; lifted, detailed shadows that are never black; restrained, realistic saturation.",
-    "Tone and contrast: low-to-moderate contrast with a soft, natural photographic tonal curve and gentle highlight roll-off, like a real cinema camera's log footage graded with restraint; overall exposure bright and generous; the characters lifted well out of the shadows and clearly lit, the whole interior bright enough to read its depth, with the darkest areas a soft mid-dark tone full of detail rather than black; low, natural local contrast on faces, hands and fabric (no clarity or structure boost, no HDR tone-mapping, no gritty micro-contrast); smooth, clean gradients in the haze, the light shafts and the walls.",
-    "Texture and realism: photorealistic, true-to-life surfaces exactly as a high-end camera records them — natural skin with real pores, fine lines and subtle variation in tone (neither airbrushed nor exaggerated); real cotton, denim and leather with soft natural sheen; wood, metal, concrete and rust with honest, quiet wear; texture is resolved by the optics, not added by sharpening or contrast, so detail reads crisp and real rather than etched or crunchy.",
-    BRIGHT_HDR,
-    SUBJECT_HDR,
+    "Lighting: natural, motivated light — dim, narrow shafts of soft, dusty daylight (god rays) in a faded parchment tone, as if filtered through old, grimy glass, streaming from high windows or skylights through dust and haze, cutting diagonally or straight down through the space; small, restrained practical accents such as sparks from a welder or grinder, bare tungsten bulbs and pendant lamps, which stay muted and never tint the frame; the characters gently rim-lit and side-lit, with soft, natural modelling on their faces; the far background falls off into dim, quiet shadow, with only faint window light and haze.",
+    "Fill light: the characters are clearly the brightest, clearest part of the frame — a large, soft fill (as if from a big bounce board or a diffused source just off camera, plus light bounced from the sunlit floor and walls) lights their faces, eyes, hands and clothing evenly from the front, so every feature and fabric reads clearly and their skin looks natural; no part of a character falls into dark shadow. The fill stays on the characters and the ground right around them and does not spill into the background: the corners, ceiling, far walls and depths of the space fall off naturally into dark umber, where shapes and materials are still faintly visible.",
+    "Atmosphere: thin, dim, smooth haze in the air that makes the light shafts visible as clean, continuous beams without lifting the dark background; only a few sparse, softly out-of-focus dust motes in the beams, never a speckled or noisy layer; a few faint round bokeh orbs from distant lamps and sparks.",
+    "Colour grade: a rustic, earthy, matte grade, muted and timeworn like an old photograph of a working place — low saturation across the whole frame, with an aged, earthen warmth; windows, haze and light shafts in dim, dusty parchment and faded straw; walls, metal and shadows in dark umber, smoky brown and old iron; wood, earth, rust and floors in weathered walnut, burnt sienna, faded ochre and dull olive; clothing in subdued, sun-faded, earth-toned versions of its real colours; skin is natural, muted and weathered, a sun-worn brown that still looks healthy; hues stay close together in the earth family but tones stay clearly separated, with clearly lit characters against a dark background; dark umber shadows that keep faint detail and are never pure black.",
+    "Tone and contrast: moderate overall contrast that comes from clearly lit characters against a dark background, with a soft, natural photographic tonal curve and gentle highlight roll-off, like a real cinema camera's log footage graded with restraint; a matte finish whose background highlights stop at a dim, muted parchment and whose darkest areas are a deep umber with quiet detail rather than pure black; overall a dark, subdued exposure, never sunny or glowing; the characters lifted well out of the shadows and clearly lit, the depth of the interior reading through faint, layered dark tones; low, natural local contrast on faces, hands and fabric (no clarity or structure boost, no HDR tone-mapping, no gritty micro-contrast); smooth, clean gradients in the haze, the light shafts and the walls.",
+    "Texture and realism: photorealistic, true-to-life surfaces exactly as a high-end camera records them — natural skin with real pores, fine lines and subtle variation in tone (neither airbrushed nor exaggerated); real cotton, denim and leather, worn and softened by years of use; old timber, iron, plaster and rust with a real aged patina; texture is resolved by the optics, not added by sharpening or contrast, so detail reads crisp and real rather than etched or crunchy.",
+    "HDR exposure: a natural, blended-exposure finish — the characters are lifted and well exposed, with clear faces, skin, hands and clothing, never a dark silhouette; the background (walls, windows, haze and light shafts) sits about two stops below them, dark and subdued, keeping faint detail and never blowing out to white; dark shadows that still hold detail; clean, natural tonality with no halos and no over-processed look.",
+    subjectHdr("the background is held well below the people, about two stops darker and dark overall, falling off naturally with distance from the light on them, so subject and background still feel lit by the same world"),
     peopleSharp("very high optical resolution with natural micro-contrast, so detail is crisp and real rather than crunchy or etched"),
-    creamyBokeh("soft slate, steel-blue and warm amber tones from the hazy depths of the space, with round orbs from distant lamps and sparks"),
-    "Detail: natural, photographic detail on the characters — weathered skin with real texture and soft tonality, wrinkles, grey hair and stubble, worn work jackets and caps; tools and surfaces with real but understated wear; clean, smooth floors, walls and background surfaces rather than heavy grime or busy texture; natural, authentic expressions.",
-    "Mood: contemplative, dignified, intimate and quietly epic; a meaningful moment between people; nostalgic yet grounded.",
+    creamyBokeh("dark umber, smoky brown and dull ochre tones from the dim depths of the space, with a few faint round orbs from distant lamps and sparks"),
+    "Detail: natural, photographic detail on the characters — weathered skin with real texture and soft tonality, wrinkles, grey hair and stubble, worn work jackets and caps; rustic, hand-worn tools and surfaces — aged wood grain, rusted iron, flaking paint, patched walls and packed-earth or worn concrete floors, as fits the scene, softened by distance and never busy; natural, authentic expressions.",
+    "Mood: rustic, timeworn, contemplative, dignified and intimate; a meaningful moment between people in a place shaped by years of work; nostalgic yet grounded.",
     NATURAL_ANATOMY,
-    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, close-up portrait framing, flat lighting without shafts or direction, characters lost in shadow, dark or underlit faces, half-shadowed faces, silhouettes, dark murky corners or underexposed areas, a dim or gloomy interior, low-key or noir look, blown-out white windows or light shafts, crushed black shadows, high contrast, punchy, dramatic or harsh look, HDR tone-mapped or crunchy look, etched or over-defined detail, strong vignette, cartoon, illustration or CGI look, plastic skin, oversaturated colours, overcooked HDR halos or grey flat tones, a soft or out-of-focus character, busy, harsh, flat or fake-looking bokeh, film grain, digital noise, speckled or gritty texture, dusty or noisy haze, over-sharpening, heavy clarity or texture boost, rough or pitted skin, grimy over-textured surfaces, cluttered crowds, readable text, watermarks, logos.`,
+    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, close-up portrait framing, flat lighting without shafts or direction, characters lost in shadow, dark or underlit faces, half-shadowed faces, silhouettes, a bright, airy or evenly lit background, a background as bright as the characters, pale walls or a hazy white glow, a spotlit or cut-out look, blown-out white windows or light shafts, crushed black shadows, high contrast, punchy, dramatic or harsh look, HDR tone-mapped or crunchy look, etched or over-defined detail, strong vignette, cartoon, illustration or CGI look, plastic skin, vivid, rich or saturated colours, overcooked HDR halos or lifeless, washed-out flat tones, a soft or out-of-focus character, busy, harsh, flat or fake-looking bokeh, film grain, digital noise, speckled image noise, noisy haze, over-sharpening, heavy clarity or texture boost, rough or pitted skin, new, polished, glossy or spotless surfaces, a modern, clean or industrial-chrome look, cluttered crowds, readable text, watermarks, logos, a glowing golden, amber or honey cast, a golden-hour or sunset glow, teal-and-orange split toning, a cool blue, slate or steel-grey cast, a black-and-white or fully desaturated look, a flat sepia or monochrome-brown filter, ashen, grey, orange or yellow skin.`,
   ].join("\n");
 
 /**
@@ -310,6 +319,48 @@ const LANDSCAPE_TEMPLATE = (subject: string) =>
     `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, shallow depth of field, background blur or bokeh, soft or out-of-focus foreground or horizon, flat or dull grey sky, pasted-in or fantasy sky, blown-out sky or sun, crushed black shadows, overcooked HDR halos or grey flat tones, oversaturated or neon colours, tilted horizon, heavy vignette, haze that hides the landscape, film grain, digital noise, over-sharpening, CGI or illustration look, cluttered tourist crowds, readable text, watermarks, logos.`,
   ].join("\n");
 
+/** A prompt naming smoke or something that makes it gets PORTRAIT_SMOKE; every other Portrait stays smoke-free. */
+const SMOKE_SOURCE = /(?<!\b(?:no|without) )\b(?:smok(?:e|es|ed|er|ing|y)|usok|cigars?|cigarettes?|sigarilyo|tabako|tobacco|pipes?|incense|vap(?:e|es|ing))\b/i;
+
+const PORTRAIT_SMOKE =
+  "Smoke: emphasised, sculptural smoke as a major element of the picture, rising from the source described — a dense, bright ribbon near the source that twists upward into curling, layered filaments and then opens into soft veils filling the dark space beside the face; lit by the same side light so it stands out in pale silver-grey against the black background, with fine, clearly resolved wisps and real volume; it stays beside and in front of the empty space, never covering the eyes or the main features of the face.";
+
+/**
+ * Portrait — reverse-engineered from a reference of an elderly man with a pipe, close up against black:
+ *  - an extreme close-up in a horizontal 3:2 frame: the face fills most of the height, off-centre,
+ *    turned in three-quarter or profile toward open dark space
+ *  - a studio setup: a directional side key plus large soft fill and ambient light that open up the dark areas of
+ *    the person (shadow side of the face, eye sockets, neck, hands, clothing), while the background stays black
+ *  - very high local contrast, dodged and burned so every pore, wrinkle and hair stands out; the contrast lives in
+ *    fine detail rather than in broad dark areas
+ *  - ultra-sharp facial contours, with a stronger detail pass of its own (`finish: "ultra"`)
+ *  - a heavily muted grade with dark brown skin (a dark complexion that is still well lit), restrained colour in patterned fabrics
+ *  - emphasised smoke only when the prompt calls for it (SMOKE_SOURCE)
+ * Uses peopleSharp, but not SUBJECT_HDR or creamyBokeh: the background is plain black and the face keeps hard modelling.
+ */
+const PORTRAIT_TEMPLATE = (subject: string) => {
+  const smoke = SMOKE_SOURCE.test(subject);
+  return [
+    `${subject.trim().replace(/\.$/, "")}.`,
+    PHILIPPINES,
+    "Style: a dramatic fine-art close-up portrait in landscape orientation — photorealistic, indistinguishable from a real photograph, with the intensity of an award-winning character study.",
+    "Camera and lens: flagship high-resolution camera (medium-format 100MP or full-frame 50–60MP class) at base ISO with a premium 85mm–105mm portrait or macro prime stopped down to f/5.6–f/8, so the whole face from nose to ear is in sharp focus; natural facial proportions with no wide-angle distortion.",
+    "Composition: a horizontal 3:2 frame with an extreme close-up of the head and upper shoulders; the face fills most of the frame height and sits off-centre on one side, turned in three-quarter view or profile toward open dark space on the other side, with the top of the head or headwear and the shoulders allowed to crop close to the frame edge; a hand and what it holds may rise into the foreground only if described; the person is candid and absorbed, not posing for the camera.",
+    "Lighting: a professional studio portrait setup — one large directional key light from the side the person is facing, slightly above eye level, raking across the skin to sculpt the brow, cheekbone, nose and jaw; the eyes stay clearly visible with a small natural catchlight; no flash look.",
+    "Fill and ambient light on the person: a large, soft fill (a big bounce board or softbox on the shadow side) plus even studio ambient light opens up every dark area of the person — the shadow side of the face, eye sockets, under the nose and chin, the neck, ear, hair, hands and clothing are all clearly lit and readable, with visible skin colour, texture and fabric pattern, about one to one and a half stops below the key and never black; the light is confined to the person and does not spill onto the background.",
+    "Background: a plain, seamless, near-black background with no visible place, objects or other people, separated from the person only by the light falling on them.",
+    "Colour grade: a heavily muted, desaturated grade built around the skin — unless the description names another complexion, a deep, dark brown complexion with muted umber and walnut midtones, restrained, dusty light-brown highlights on the forehead, nose and cheekbones, and deep chocolate brown in the shadows, with natural variation and very little saturation; the darkness belongs to the complexion, not the exposure, so the skin stays well lit and fully readable; a neutral black background; clothing and headwear in subdued, greyed versions of their colours, with any woven or printed pattern crisp and clearly visible.",
+    "Tone and contrast: very high local contrast and strong clarity on the face, as if carefully dodged and burned by a master retoucher — controlled, muted highlights on the forehead, cheekbones and nose, with only the fine lines of each fold and crease going dark; the contrast lives in the fine detail rather than in broad dark areas, so the whole person stays open and well lit against the background; every skin feature stands out; highlights never clip and the background stays deep black.",
+    "Facial contours: ultra-sharp, high-definition contours across the whole face — the brow ridge, eyelids, eye sockets, bridge and wings of the nose, cheekbones, the folds beside the mouth, lips, jawline, chin and the ridges of the ear are all crisply defined with clear, clean edges and strong tonal separation, every plane of the face reading as distinct, sculpted form.",
+    "Facial detail: extremely detailed skin true to the person's age — every pore, wrinkle, crease, freckle, scar, sun spot and vein individually resolved where the person has them; individual hairs in the brows, lashes, stubble and beard; moist, lifelike eyes; lips, ears and hands with the same fine texture; clean, photographic detail with no digital noise.",
+    peopleSharp("ultra-sharp rendering with the highest micro-contrast and resolving power on the face, hands and fabric, with every contour and fine detail crisply defined"),
+    ...(smoke ? [PORTRAIT_SMOKE] : []),
+    "Mood: intense, intimate and contemplative; a whole life readable in one face; quiet dignity.",
+    NATURAL_ANATOMY,
+    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, ${smoke ? "smoke hiding the eyes or face, thin, faint or barely visible smoke, flat cloud-like fog" : "smoke, haze or mist"}, full-body, wide or environmental framing, a visible room or scenery, a busy or lit background, a grey or coloured backdrop, flat frontal lighting, a low-contrast or washed-out face, a dark, underexposed or half-shadowed face, black eye sockets, a neck, ear, hands or clothing lost in shadow, crushed shadows on the person, light, tan, golden or copper skin, shiny or glowing skin, ashen or grey skin, vivid or saturated colours, soft or undefined facial contours, smooth, plastic or airbrushed skin, invented wrinkles on a young face, a soft or out-of-focus face, shallow focus that blurs part of the face, wide-angle distortion, a posed smile at the camera, oversaturated or orange skin, overcooked HDR halos or glowing outlines around the face, crunchy over-sharpening, film grain, digital noise, cartoon, illustration or CGI look, readable text, signatures, watermarks, logos.`,
+  ].join("\n");
+};
+
 export const STYLES: StylePreset[] = [
   {
     id: "cinematic",
@@ -348,7 +399,7 @@ export const STYLES: StylePreset[] = [
     finish: "natural",
     name: "Director's Cut",
     tagline: "Wide film stills, light shafts through haze",
-    swatch: ["#151b22", "#3d5a6b", "#f0a347"],
+    swatch: ["#17120e", "#4f3f2f", "#a58a60"],
     build: DIRECTORS_CUT_TEMPLATE,
   },
   {
@@ -366,6 +417,15 @@ export const STYLES: StylePreset[] = [
     tagline: "Pro Philippine landscapes, cinematic sky",
     swatch: ["#1f3b2f", "#4d8a6a", "#f2c27a"],
     build: LANDSCAPE_TEMPLATE,
+  },
+  {
+    id: "portrait",
+    finish: "ultra",
+    aspect: "landscape",
+    name: "Portrait",
+    tagline: "Detailed, contrasty close-up faces on black",
+    swatch: ["#0c0b0a", "#4a3628", "#b39474"],
+    build: PORTRAIT_TEMPLATE,
   },
   {
     id: "raw",

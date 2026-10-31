@@ -38,11 +38,14 @@ See `README.md` for features, API and data layout. This file covers the conventi
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
 - **Detail pass**: every generated image goes through `finishImage()` (`lib/server/finish.ts`, `sharp`) before it is saved: a
- light luminance unsharp mask whose strength comes from `StylePreset.finish` (`crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
+ light luminance unsharp mask whose strength comes from `StylePreset.finish` (`ultra` Portrait, `crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
  Director's Cut, `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
  only IHDR/PLTE/tRNS/IDAT/IEND and colour chunks are kept, so C2PA `caBX` content credentials, EXIF, XMP, text and
  time chunks never reach `data/images/`. Keep the sharpen below the level that makes halos.
 - **Backup API** endpoints must call `guardInternal(request)` first.
+- **Regenerating an image** replaces it. `regenerate` in `Studio.tsx` enqueues one job from `ImageRecord.prompt`, `styleId` and `aspect` with `replaces: image.id`. Once the new
+ image has saved, `run()` calls `replaceImage()` in `store.ts`, which keeps the old library position and unlinks the old file last, then `forgetImage()`. Failed or cancelled jobs leave the original alone. `enqueue()` allows
+ one active job per `replaces` (a second request returns the existing job). `onImage` swaps the record in `library` and in an open viewer, and `ImageCard` shows the dot wall while `regenerating`.
 - **Deleting an image** (`DELETE /api/images/:id`) also calls `forgetImage()` in the queue, so the job leaves the Queue
  history; `Studio` filters deleted ids from the snapshot until the next poll.
 
@@ -51,6 +54,15 @@ See `README.md` for features, API and data layout. This file covers the conventi
 - **Self-playing visuals** (loaders, activity indicator, dialog glyphs, logo, empty state) are compositions in
   `components/remotion/compositions.tsx`, rendered through `<Stage>` (a `@remotion/player` wrapper with all controls off).
   Composition sizes are fixed; `<Stage>` scales them to its container through `aspect-ratio`.
+- **Studio tiles** (`ImageDraft`) are a wall of small coloured dots on a black (`INK`) background for the idle, waiting and
+  generating states; the developing `ImageCard` is black behind the reveal too, so no pale flash shows. Dots are drawn on a canvas from shared per-colour sprites (`getDotSprites`), which keeps several tiles cheap. The canvas renders 1:1 with device pixels at a whole-pixel `DOT_PITCH`, measured from its on-screen box, because a fixed-size canvas scaled by the Player shows moiré. Colours come from the fixed
+  `DOT_HUES` wheel, not the style's `swatch`, so every style reads as colourful; `latentSeed(styleId, index)` sets each
+  tile's starting hue and timing. Waves swell the dots, a diagonal band crosses them (offset per tile, so neighbours ripple
+  rather than flash together) and single dots twinkle. Per-mode feel lives in `DRAFT_LOOK`: `idle` is dim and unhurried;
+  `queued` is grey and nearly still, with an "Nth in line" chip; `running` is vivid and quick, and on the job's `startedAt`
+  clock more of the wall lights up. A finished image is revealed by `DevelopingImage` (`Tile.tsx`): a blurred copy fades in, then the sharp image
+  sharpens into place from the top down behind a feathered edge (`revealProgress`, `REVEAL_FEATHER`, `REVEAL_FRAMES`).
+  Reduced motion holds a still frame and skips the reveal.
 - **UI motion** uses Remotion's `spring()` / `interpolate()`, driven by a 60fps rAF clock in `lib/motion.ts`:
   - `useReveal` / `<Reveal>` for entrances. It writes styles directly, so there are no re-renders. `delay` is in frames.
   - `usePresence(open)` for mount and unmount transitions (dialogs, drawer, lightbox, toasts). It returns `[progress, rendered]`.
@@ -75,8 +87,9 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 - **One view, no page scroll (lg and up).** The root is `lg:h-dvh lg:overflow-hidden`. The Studio view is a two-column bento
   (Composer on the left, canvas on the right) that must fit the viewport. Below `lg` it stacks and scrolls normally.
-  When you add controls, keep them compact, and check 1280×720 and 1440×900 for `scrollHeight === innerHeight`.
-  The `short:` variant (desktop and height ≤ 820px, defined in `globals.css`) tightens spacing on short screens.
+  When you add controls, keep them compact, and check 1280×720 and 1440×900 for `scrollHeight === clientHeight` on the
+  `lg:h-dvh` root itself. The document always reports a fit because that root hides its overflow, so also confirm the Generate button is visible.
+  The `short:` variant (desktop and height ≤ 920px, defined in `globals.css`) tightens spacing on short screens and hides the style cards' taglines.
 - **Copy and type.** Use plain words ("Generate", "Aspect ratio", "Number of images", "Backups"), not film jargon. Body text
   is 15px. Control headings use `.eyebrow` (13px semibold) and metadata uses `.label` (12px). Avoid uppercase micro text.
 - **Menu.** `NavIsland` is a floating pill with four views (**Studio**, **Prompts**, **Queue**, **Gallery**), switched in
@@ -144,7 +157,10 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 ## Styles
 
-`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape and Raw.
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape, Portrait and Raw.
+**Portrait** is an extreme close-up in a horizontal frame (its `aspect: "landscape"` switches the pickers to Landscape when chosen, and the user can still change it): a studio setup of a raking side key plus a "Fill and ambient light" line that opens up the dark areas of the person (never the near-black background), a heavily muted grade with dark brown skin unless the prompt names another complexion (a dark complexion, not dark exposure), a "Facial contours" line, very high local
+contrast held in fine detail rather than broad shadows, and every pore and wrinkle resolved. It uses `peopleSharp(...)` but skips `SUBJECT_HDR` and `creamyBokeh`, and its detail pass is its own `ultra` level. `PORTRAIT_SMOKE` (emphasised, sculptural smoke) is added only when `SMOKE_SOURCE` finds smoke
+or something that makes it in the prompt; every other Portrait lists smoke in its Avoid line.
 **Landscape** is professional Philippine landscape photography: cinematic realistic sky, a smooth editorial HDR balance,
 and front-to-back sharpness at f/8–f/11 from hyperfocal focus (so it deliberately skips `PEOPLE_SHARP` / `creamyBokeh` and
 bans bokeh); its detail pass is `crisp`. Every style, Raw
@@ -154,31 +170,32 @@ Philippine too), and the Prompts enhancer writes Filipino people and Philippine 
 sets Filipino headwear (rounded-crown buri/straw farmer's hat, buntal hat, cap, bimpo towel) and every Avoid list includes
 `NOT_PHILIPPINES` (no pointed conical Vietnamese nón lá hats or other countries' clothing unless described). Every style also ends with `NATURAL_ANATOMY` (correct heads, limbs, hands, feet and faces; believable interactions and geometry)
 and starts its Avoid list with `AI_ARTEFACTS` (extra limbs or heads, distorted faces, fused fingers, duplicated people,
-garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters the
-brightest, clearest part after the light shafts and lifts every dark area, so nothing sinks into murky shadow) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
+garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, dim god rays through thin haze, an overall rustic, muted, matte tone (aged wood, rust, faded ochre and dull olive, dusty parchment lights, dark umber background, no golden glow, cool cast or flat sepia filter), with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters clearly the
+brightest, clearest part and keeps that light off the background, which falls off into umber that holds faint detail) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
 halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with a
 balanced HDR finish that lifts the subject (no silhouettes), low-to-medium contrast, open shadows with no crushed blacks,
 no vignette, natural saturation, and a subtle painterly touch (smooth tones, softened distant detail, no brushstrokes). The setting and viewpoint always come from the prompt (farm, village, interior looking out...); the lagoon
 is only the fallback when no place is named, and water appears only when described. `MOONLIGHT_SCENE` holds the shared
 setting and composition lines; Night Paint keeps its own glowing, magical
-moon, water, lighting and palette lines. **Melancholy** and **Director's Cut** share `BRIGHT_HDR`, a
+moon, water, lighting and palette lines. **Melancholy** uses `BRIGHT_HDR`, a
 natural HDR finish that lifts the backlit subject to a clear exposure while the bright background (sun, sky, haze,
-windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds.
+windows) keeps its detail; it also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds.
 **Solitude** uses its own "Exposure" line instead: the person is brightest and the background sits about a stop lower in calm,
-soft light (a small, mostly hidden sun, thin translucent mist, no glare or hazy-white wash). **Director's Cut** favours
-photorealistic texture over punch: low-to-moderate contrast with a soft photographic curve, a "Texture and realism" line,
+soft light (a small, mostly hidden sun, thin translucent mist, no glare or hazy-white wash). **Director's Cut** also has its own
+"HDR exposure" line, because `BRIGHT_HDR`'s airy, luminous look fights its muted grade: characters lifted, background about two stops lower and dark. It calls `subjectHdr(...)` with that darker background, because the default `SUBJECT_HDR` forbids darkening it. It favours
+photorealistic texture over punch: a soft photographic curve, low local contrast on faces and fabric, a "Texture and realism" line,
 and `peopleSharp(...)` called with gentle micro-contrast. **Cinematic**, **Melancholy**, **Director's Cut**
 and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SUBJECT_HDR` (an extra HDR lift on every person while
 the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person and what they hold ultra-sharp and photorealistic, from a flagship
 body and premium prime stopped down to f/4–f/5.6; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)`
 (ultra-realistic, creamy bokeh with real lens texture in each style's own colours, the background placed far enough back to
-melt away at that aperture). Edit them once to change them everywhere: Moonlight and Raw use both too; Night Paint and Landscape do not. **Melancholy** and **Solitude**
+melt away at that aperture). Edit them once to change them everywhere: Moonlight and Raw use both too; Night Paint and Landscape do not; Portrait uses only `peopleSharp`. **Melancholy** and **Solitude**
 also add `SOFT_BACKGROUND_ONLY`: haze, mist, glow, faded tones and blur live only in the background scenery; the people and the
 ground right around them stay crisp, with clear air in front of them and no whole-image soft-focus filter. Melancholy's
 haze is deliberately dramatic (thick, layered golden haze and bold god rays, kept behind the people). Solitude frames the
 person medium (a third to half of the frame height), focuses on the eyes at f/2.8, and has a "Face fill light" line so the
 backlit face stays evenly lit. The Composer shows every style as a
-card (style icon, name, tagline) in a two-column grid; an odd last card spans the row. The prompt card is capped
+card (style icon, name, and a tagline except on `short:` screens) in a two-column grid; an odd last card spans the row. The prompt card is capped
 (`lg:max-h-[200px]`) so the style cards fit; there are no prompt suggestions. The Prompts action bar uses the compact
 `StylePicker` dropdown (`components/studio/StylePicker.tsx`). Every style has its own glyph in `STYLE_GLYPHS`
 (`components/studio/icons.tsx`), drawn by `<StyleIcon>` in the style's accent on its darkest swatch tone; a new style

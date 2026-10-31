@@ -9,13 +9,13 @@ export async function GET() {
 }
 
 /**
- * POST { items: [{ prompt, styleId, aspect }], batchId? }
+ * POST { items: [{ prompt, styleId, aspect, replaces? }], batchId? }
  *   or { prompt, styleId, aspect, count } (same prompt repeated `count` times)
  * → 201 { jobs }. Responds 429 when the jobs do not fit in GENERATION_QUEUE_SIZE.
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
-    items?: { prompt?: string; styleId?: string; aspect?: string }[];
+    items?: { prompt?: string; styleId?: string; aspect?: string; replaces?: string }[];
     prompt?: string;
     styleId?: string;
     aspect?: string;
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "OPENAI_API_KEY is not configured on the server." }, { status: 500 });
   }
 
-  const raw = body.items?.length
+  const raw: { prompt?: string; styleId?: string; aspect?: string; replaces?: string }[] = body.items?.length
     ? body.items
     : Array.from({ length: Math.min(MAX_COUNT, Math.max(1, Math.floor(body.count ?? 1))) }, () => ({
         prompt: body.prompt,
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         aspect: body.aspect,
       }));
 
-  const items = raw.map((i) => ({ prompt: i.prompt?.trim() ?? "", styleId: i.styleId ?? "", aspect: i.aspect ?? "" }));
+  const items = raw.map((i) => ({ prompt: i.prompt?.trim() ?? "", styleId: i.styleId ?? "", aspect: i.aspect ?? "", replaces: typeof i.replaces === "string" ? i.replaces : undefined }));
   if (!items.length) return Response.json({ error: "Nothing to queue." }, { status: 400 });
   if (items.some((i) => !i.prompt)) return Response.json({ error: "Every item needs a prompt." }, { status: 400 });
   if (items.some((i) => i.prompt.length > 4000)) return Response.json({ error: "Prompts are limited to 4000 characters." }, { status: 400 });

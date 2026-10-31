@@ -27,17 +27,23 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   a warm amber and honey palette with muted sage foliage, soft lifted shadows, and quiet, nostalgic everyday moments
   often seen from behind.
   **Director's Cut** is a wide film still in a cavernous old workshop: characters facing each other across the frame,
-  shafts of light from high windows through dust and haze, warm sparks and lamps against cool teal-slate shadows.
+  dim shafts of light from high windows through thin haze, the whole frame in a rustic, muted, matte tone (aged wood,
+  rust, faded ochre and dull olive, dusty parchment lights), with brightly lit characters against a dark umber background.
   **Solitude** is a wide, quiet moment of one person alone, in whatever setting the prompt describes (field, forest,
   beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
   **Landscape** is professional landscape photography of the Philippines: a cinematic but realistic sky, a smooth
   editorial HDR balance between light and shadow, and ultra-sharp detail from foreground to horizon (f/8–f/11, no bokeh).
+  **Portrait** is an extreme close-up of a face in a landscape frame, lit like a studio shot: a raking side light plus soft fill
+  and ambient light that open up the dark areas of the person, on a near-black background. A heavily muted grade with dark brown
+  skin (unless you describe another complexion), ultra-sharp facial contours and every pore and wrinkle resolved. If your prompt mentions smoke or something that makes it (a
+  pipe, a cigarette, incense), the smoke becomes a bold, curling part of the picture; otherwise there is none.
   **Raw** sends your prompt as written, plus only the checks every style shares: the Philippines setting with Filipino
   people (unless you name another place or nationality) and anatomy (no extra limbs, heads or fingers, no distorted faces).
 - **Aspect ratios.** Landscape 3:2 (1536×1024), Square 1:1 (1024×1024), Portrait 2:3 (1024×1536).
-- **1–8 images per run.** Each image is its own request, so tiles finish independently. While waiting, each
-  tile plays a Remotion "developing" composition (iris, scanner sweep, latent-image glow, film grain, frame counter)
-  with a live timer.
+- **1–8 images per run.** Each image is its own request, so tiles finish independently. Before you generate, the
+  canvas previews the next batch as a wall of small coloured dots on black, with waves and a band of light moving across it.
+  Waiting tiles go grey and nearly still; generating tiles turn vivid and quick, and more of the wall lights up as the job
+  runs. Each finished image then sharpens into place from the top down. All of it is Remotion: `ImageDraft`.
 - **Quote titles.** When each image finishes, `OPENAI_COMPLETION_MODEL` looks at the photo and writes a short, uplifting
   title tied to what is in it: a famous person's words (with their name) when a genuine quote fits, otherwise a Bible
   verse (with its reference). Titles show on cards and in the viewer; "New quote" / "Write a title" (re)writes one. Older
@@ -50,6 +56,9 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   images per prompt, and add them to the queue (or send one to the Studio).
 - **Remotion hover physics.** Every button, tab, radio and checkbox springs up, leans toward the cursor and presses in on
   click, driven by Remotion's `spring()`.
+- **Regenerate.** Every finished image has a Regenerate button (on its card, in the viewer and in the Queue) that replaces it
+  with a new image from the same prompt, style and aspect ratio, in the same place. The old image is deleted once the new one
+  has saved; if generation fails or is cancelled, the original stays.
 - **Full-screen viewer.** Click any image to zoom. Scroll or click to zoom, drag to pan, `+` / `−` / `0` / `1` keys,
   `←` / `→` to move between images, download and delete from the toolbar.
 - **Remotion everywhere.** Activity indicators, confirmation dialogs (the whole card is a Remotion scene), the logo,
@@ -175,7 +184,7 @@ app/
   api/…                                # route handlers listed above
 components/
   remotion/Stage.tsx                   # <Player> wrapper for decorative compositions
-  remotion/compositions.tsx            # DevelopingFrame, ApertureSpinner, LogoMark, ConfirmGlyph, Viewfinder
+  remotion/compositions.tsx            # ImageDraft, ApertureSpinner, LogoMark, ConfirmGlyph, Scribble
   ui/                                  # Reveal, Activity, ConfirmDialog, Toasts
   studio/                              # Studio (state + views), NavIsland, Composer, FitGrid, Gallery,
                                        # PromptsView, QueueView, Tile, Lightbox, BackupDrawer, icons

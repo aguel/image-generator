@@ -7,6 +7,8 @@ export interface QueueItem {
   prompt: string;
   styleId: string;
   aspect: string;
+  /** Image this one replaces once it has saved. */
+  replaces?: string;
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -17,9 +19,9 @@ async function json<T>(res: Response): Promise<T> {
 
 /**
  * Client view of the server queue. Polls /api/queue (fast while work is active)
- * and reports each newly finished image once through `onImage`.
+ * and reports each newly finished image once through `onImage`, with the id of the image it replaced, if any.
  */
-export function useQueue(onImage: (image: ImageRecord) => void) {
+export function useQueue(onImage: (image: ImageRecord, replaces?: string) => void) {
   const [snap, setSnap] = useState<QueueSnapshot | null>(null);
   const seen = useRef(new Set<string>());
   const onImageRef = useRef(onImage);
@@ -31,7 +33,7 @@ export function useQueue(onImage: (image: ImageRecord) => void) {
     for (const j of next.jobs) {
       if (j.status === "done" && j.image && !seen.current.has(j.id)) {
         seen.current.add(j.id);
-        onImageRef.current(j.image);
+        onImageRef.current(j.image, j.replaces);
       }
     }
     setSnap(next);
@@ -70,7 +72,7 @@ export function useQueue(onImage: (image: ImageRecord) => void) {
         }),
       );
       // Show the new jobs immediately, then let the poll catch up.
-      setSnap((s) => (s ? { ...s, jobs: [...s.jobs, ...jobs] } : s));
+      setSnap((s) => (s ? { ...s, jobs: [...s.jobs, ...jobs.filter((j) => !s.jobs.some((old) => old.id === j.id))] } : s));
       refresh();
       return jobs;
     },

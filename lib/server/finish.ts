@@ -13,6 +13,8 @@ import type { StylePreset } from "../styles";
  * areas (sky, skin, bokeh) are protected by the threshold (`m1`).
  */
 const LEVELS = {
+  /** Portrait: ultra-sharp facial contours. Tight radius, so edges gain definition without wide halos. */
+  ultra: { sigma: 0.8, m1: 0.9, m2: 3.2, x1: 1.8, y2: 14, y3: 22 },
   /** Cinematic, Solitude: crisp micro-contrast. */
   crisp: { sigma: 0.9, m1: 0.6, m2: 2.4, x1: 2.2, y2: 12, y3: 18 },
   /** Most photographic styles. */

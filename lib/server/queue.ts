@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getAspect, type AspectId } from "../aspects";
 import { getStyle, type StyleId } from "../styles";
 import type { ImageRecord, QueueJob, QueueSnapshot } from "../types";
-import { addImage } from "./store";
+import { addImage, isSafeId, replaceImage } from "./store";
 import { generateImage, imageModel } from "./openai";
 import { titleFor } from "./quote";
 import { finishImage } from "./finish";
@@ -101,7 +101,12 @@ async function run(job: Internal) {
     const title = await titleFor(job.prompt, style.name, { image: bytes, signal: job.controller.signal });
     if (job.status !== "running") return;
     if (title) record.title = title;
-    await addImage(record, bytes);
+    if (job.replaces) {
+      await replaceImage(job.replaces, record, bytes);
+      forgetImage(job.replaces);
+    } else {
+      await addImage(record, bytes);
+    }
     if (job.status === "running") {
       job.status = "done";
       job.image = record;
@@ -148,9 +153,16 @@ export interface EnqueueItem {
   prompt: string;
   styleId: string;
   aspect: string;
+  /** Image this job replaces once it has saved its own. */
+  replaces?: string;
 }
 
-/** Adds jobs atomically: either all fit in the waiting line, or none are added. */
+const isActive = (j: QueueJob) => j.status === "queued" || j.status === "running";
+
+/**
+ * Adds jobs atomically: either all fit in the waiting line, or none are added.
+ * An image can only be replaced by one job at a time; asking again returns the job already doing it.
+ */
 export function enqueue(items: EnqueueItem[], batchId?: string): QueueJob[] {
   const { concurrency, queueSize } = limits();
   const { running, queued } = counts();
@@ -161,12 +173,16 @@ export function enqueue(items: EnqueueItem[], batchId?: string): QueueJob[] {
 
   const now = new Date().toISOString();
   const created = items.map((item) => {
+    const replaces = item.replaces && isSafeId(item.replaces) ? item.replaces : undefined;
+    const pending = replaces && [...state.jobs.values()].find((j) => j.replaces === replaces && isActive(j));
+    if (pending) return pending;
     const job: Internal = {
       id: randomUUID().replace(/-/g, "").slice(0, 16),
       batchId,
       prompt: item.prompt.trim(),
       styleId: getStyle(item.styleId).id as StyleId,
       aspect: getAspect(item.aspect).id as AspectId,
+      replaces,
       status: "queued",
       createdAt: now,
       waiters: [],

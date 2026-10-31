@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Stage } from "@/components/remotion/Stage";
-import { Viewfinder } from "@/components/remotion/compositions";
 import { Reveal } from "@/components/ui/Reveal";
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ui/ConfirmDialog";
 import { Toasts, type Toast } from "@/components/ui/Toasts";
@@ -12,7 +10,7 @@ import { DEFAULT_STYLE, getStyle, type StyleId } from "@/lib/styles";
 import type { BackupSummary, EnhancedPrompt, ImageRecord, QueueJob } from "@/lib/types";
 import { useQueue, type QueueItem } from "@/lib/useQueue";
 import { Composer, type ComposerState } from "./Composer";
-import { JobTile } from "./Tile";
+import { IdleTile, JobTile } from "./Tile";
 import { QueueView } from "./QueueView";
 import { PromptsView, INITIAL_LAB, type PromptLab } from "./PromptsView";
 import { FitGrid } from "./FitGrid";
@@ -108,8 +106,15 @@ export function Studio() {
   }, []);
 
   /* ---------- queue ---------- */
-  const onImage = useCallback((image: ImageRecord) => {
-    setLibrary((lib) => (lib === null || lib.some((r) => r.id === image.id) ? lib : [image, ...lib]));
+  const onImage = useCallback((image: ImageRecord, replaces?: string) => {
+    setLibrary((lib) => {
+      if (lib === null || lib.some((r) => r.id === image.id)) return lib;
+      return replaces && lib.some((r) => r.id === replaces) ? lib.map((r) => (r.id === replaces ? image : r)) : [image, ...lib];
+    });
+    if (!replaces) return;
+    // A regenerated image takes the old one's place, including in an open viewer.
+    setDeleted((d) => new Set(d).add(replaces));
+    setViewer((v) => (v?.ids.includes(replaces) ? { ids: v.ids.map((id) => (id === replaces ? image.id : id)), id: v.id === replaces ? image.id : v.id } : v));
   }, []);
   const queue = useQueue(onImage);
   const snap = queue.snap;
@@ -143,7 +148,7 @@ export function Studio() {
   const retry = useCallback(
     async (job: QueueJob) => {
       try {
-        const [fresh] = await queue.enqueue([{ prompt: job.prompt, styleId: job.styleId, aspect: job.aspect }], job.batchId);
+        const [fresh] = await queue.enqueue([{ prompt: job.prompt, styleId: job.styleId, aspect: job.aspect, replaces: job.replaces }], job.batchId);
         setBatches((bs) => bs.map((b) => ({ ...b, jobIds: b.jobIds.map((id) => (id === job.id ? fresh.id : id)) })));
       } catch (e) {
         toast((e as Error).message, "error");
@@ -151,6 +156,38 @@ export function Studio() {
     },
     [queue, toast],
   );
+
+  /**
+   * Replaces a finished image with a new one from the same prompt, style and aspect ratio. The server swaps them only
+   * once the new image has saved, so a failed or cancelled job leaves the original in place. A tile on the Studio
+   * canvas switches to the new job straight away.
+   */
+  const regenerate = useCallback(
+    async (image: ImageRecord) => {
+      const owner = queue.snap?.jobs.find((j) => j.image?.id === image.id);
+      try {
+        const [fresh] = await queue.enqueue(
+          [{ prompt: image.prompt, styleId: getStyle(image.styleId).id, aspect: getAspect(image.aspect).id, replaces: image.id }],
+          owner?.batchId,
+        );
+        if (owner) setBatches((bs) => bs.map((b) => ({ ...b, jobIds: b.jobIds.map((id) => (id === owner.id ? fresh.id : id)) })));
+        toast("Regenerating. The new image will replace this one.", "success");
+      } catch (e) {
+        toast((e as Error).message, "error");
+      }
+    },
+    [queue, toast],
+  );
+
+  // Say when a regenerate fails, since the card simply goes back to showing the original.
+  const replacing = useRef(new Set<string>());
+  useEffect(() => {
+    for (const j of snap?.jobs ?? []) {
+      if (!j.replaces) continue;
+      if (j.status === "queued" || j.status === "running") replacing.current.add(j.id);
+      else if (replacing.current.delete(j.id) && j.status === "error") toast("Could not regenerate. The original image was kept.", "error");
+    }
+  }, [snap, toast]);
 
   const cancelJob = useCallback(
     (job: QueueJob) => queue.cancel(job.id).catch((e) => toast((e as Error).message, "error")),
@@ -315,6 +352,11 @@ export function Studio() {
   };
 
   /* ---------- derived ---------- */
+  /** Images currently being replaced by a queued or running job. */
+  const regenerating = useMemo(
+    () => new Set((snap?.jobs ?? []).flatMap((j) => (j.replaces && (j.status === "queued" || j.status === "running") ? [j.replaces] : []))),
+    [snap],
+  );
   const batch = batches[0];
   const batchJobs = useMemo(() => {
     if (!batch || !snap) return [];
@@ -372,7 +414,7 @@ export function Studio() {
                     <span className="label">
                       {batch
                         ? `Batch ${batch.roll} · ${batch.jobIds.length} image${batch.jobIds.length === 1 ? "" : "s"} · ${getStyle(batch.styleId).name} · ${getAspect(batch.aspect).label} ${getAspect(batch.aspect).ratio}`
-                        : "Current batch"}
+                        : `Next batch · ${settings.count} image${settings.count === 1 ? "" : "s"} · ${getStyle(settings.styleId).name} · ${getAspect(settings.aspect).label} ${getAspect(settings.aspect).ratio}`}
                     </span>
                     <h1 className="mt-1 line-clamp-2 text-[20px] font-semibold leading-snug tracking-[-0.02em] text-ink md:text-[22px] lg:line-clamp-1">
                       {batch ? batch.title : "Your images will appear here"}
@@ -398,6 +440,7 @@ export function Studio() {
                             index={i}
                             onOpen={() => job.image && openViewer(job.image, batchJobs.flatMap((j) => (j.image ? [j.image] : [])))}
                             onDelete={() => job.image && askDelete(job.image)}
+                            onRegenerate={() => job.image && regenerate(job.image)}
                             onRetry={() => retry(job)}
                             onCancel={() => cancelJob(job)}
                           />
@@ -406,14 +449,14 @@ export function Studio() {
                     </FitGrid>
                   </div>
                 ) : (
-                  <div className="relative mt-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[20px] bg-canvas">
-                    <Stage component={Viewfinder} inputProps={{ reticle: false }} width={1280} height={720} duration={240} cover className="absolute inset-0 h-full w-full" />
-                    <div className="pointer-events-none relative flex flex-col items-center px-6 text-center">
-                      <p className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink md:text-[30px]">No images yet</p>
-                      <p className="mt-2 max-w-[380px] text-[15px] leading-relaxed text-ink-soft">
-                        Write a prompt, pick a style, aspect ratio and number of images, then press Generate. Every image is also saved to the Gallery.
-                      </p>
-                    </div>
+                  <div className="mt-4 flex min-h-0 flex-1" aria-label="Preview of the next batch">
+                    <FitGrid count={settings.count} ratio={getAspect(settings.aspect).width / getAspect(settings.aspect).height}>
+                      {Array.from({ length: settings.count }, (_, i) => (
+                        <Reveal key={i} from="scale" delay={i * 4} spring="snappy">
+                          <IdleTile styleId={settings.styleId} aspect={settings.aspect} index={i} />
+                        </Reveal>
+                      ))}
+                    </FitGrid>
                   </div>
                 )}
               </div>
@@ -436,6 +479,7 @@ export function Studio() {
               onCancel={cancelJob}
               onCancelWaiting={(jobs) => Promise.all(jobs.map((j) => queue.cancel(j.id))).catch((e) => toast((e as Error).message, "error"))}
               onRetry={retry}
+              onRegenerate={(job) => job.image && regenerate(job.image)}
               onOpen={(job) => job.image && openViewer(job.image, (queueSnap?.jobs ?? []).flatMap((j) => (j.image ? [j.image] : [])))}
               onClearFinished={() => queue.clearFinished().catch((e) => toast((e as Error).message, "error"))}
               onGo={setView}
@@ -447,6 +491,8 @@ export function Studio() {
               library={library}
               onOpen={openViewer}
               onDelete={askDelete}
+              onRegenerate={regenerate}
+              regenerating={regenerating}
               onGoStudio={() => setView("studio")}
               writingTitles={writingTitles}
               onWriteTitles={async () => {
@@ -475,6 +521,8 @@ export function Studio() {
         onClose={() => setViewer(null)}
         onNavigate={(i) => setViewer((v) => (v ? { ...v, id: viewerImages[i]?.id ?? v.id } : v))}
         onDelete={askDelete}
+        onRegenerate={regenerate}
+        regenerating={regenerating}
         onRetitle={async (image) => {
           try {
             const { image: updated } = await api<{ image: ImageRecord }>(`/api/images/${image.id}/title`, { method: "POST" });

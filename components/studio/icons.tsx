@@ -158,6 +158,13 @@ const STYLE_GLYPHS: Record<StyleId, ReactNode> = {
       <path d="M2.5 5.5h3.5M3.5 3.8h1.8" />
     </>
   ),
+  // Portrait: a face in profile with a curl of smoke.
+  portrait: (
+    <>
+      <path d="M12.5 14v-2.2c.8-.9 1.2-2 1.2-3.3 0-2.9-2-5-4.6-5-2.3 0-4 1.5-4.3 3.7L3.6 9.6h1.2v1.3c0 .8.6 1.4 1.4 1.4h1.5V14" />
+      <path d="M2.6 6.5c-.9-.9.9-1.7 0-2.6s.9-1.5.2-2.2" />
+    </>
+  ),
   // Raw: a plain text cursor (the prompt as written).
   raw: (
     <>

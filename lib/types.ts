@@ -40,6 +40,8 @@ export interface QueueJob {
   prompt: string;
   styleId: StyleId;
   aspect: AspectId;
+  /** Image this job replaces once its own image has saved; a failed or cancelled job leaves it alone. */
+  replaces?: string;
   status: QueueStatus;
   createdAt: string;
   startedAt?: string;

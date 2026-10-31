@@ -147,12 +147,17 @@ function JobRow({
   delay,
   onCancel,
   onRetry,
+  onRegenerate,
+  regenerating,
   onOpen,
 }: {
   job: QueueJob;
   delay: number;
   onCancel: () => void;
   onRetry: () => void;
+  onRegenerate: () => void;
+  /** Another job is already replacing this row's image. */
+  regenerating: boolean;
   onOpen: () => void;
 }) {
   const aspect = getAspect(job.aspect);
@@ -186,6 +191,7 @@ function JobRow({
         </p>
         <p className="mt-0.5 truncate text-[13px] text-ink-soft">
           {getStyle(job.styleId).name} · {aspect.label} {aspect.ratio}
+          {job.replaces && (job.status === "queued" || job.status === "running") ? " · Replaces an image" : null}
           {job.status === "error" && job.error ? <span className="text-danger"> · {job.error}</span> : null}
         </p>
       </div>
@@ -207,6 +213,11 @@ function JobRow({
         )}
         {job.status === "done" && job.image && (
           <>
+            {!regenerating && (
+              <IconAction label="Regenerate" onClick={onRegenerate}>
+                <IconRetry />
+              </IconAction>
+            )}
             <IconAction label="View image" onClick={onOpen}>
               <IconExpand />
             </IconAction>
@@ -277,6 +288,7 @@ export function QueueView({
   onCancel,
   onCancelWaiting,
   onRetry,
+  onRegenerate,
   onOpen,
   onClearFinished,
   onGo,
@@ -285,6 +297,7 @@ export function QueueView({
   onCancel: (job: QueueJob) => void;
   onCancelWaiting: (jobs: QueueJob[]) => void;
   onRetry: (job: QueueJob) => void;
+  onRegenerate: (job: QueueJob) => void;
   onOpen: (job: QueueJob) => void;
   onClearFinished: () => void;
   onGo: (view: "studio" | "prompts") => void;
@@ -460,6 +473,8 @@ export function QueueView({
                         delay={Math.min(rowIndex++, 14) * 2}
                         onCancel={() => onCancel(job)}
                         onRetry={() => onRetry(job)}
+                        onRegenerate={() => onRegenerate(job)}
+                        regenerating={Boolean(job.image && snap?.jobs.some((j) => j.replaces === job.image!.id && (j.status === "queued" || j.status === "running")))}
                         onOpen={() => onOpen(job)}
                       />
                     ))}

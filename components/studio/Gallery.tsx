@@ -59,6 +59,8 @@ export function Gallery({
   library,
   onOpen,
   onDelete,
+  onRegenerate,
+  regenerating,
   onGoStudio,
   onWriteTitles,
   writingTitles,
@@ -66,6 +68,9 @@ export function Gallery({
   library: ImageRecord[] | null;
   onOpen: (image: ImageRecord, list: ImageRecord[]) => void;
   onDelete: (image: ImageRecord) => void;
+  onRegenerate: (image: ImageRecord) => void;
+  /** Ids of images a job is currently replacing. */
+  regenerating: Set<string>;
   onGoStudio: () => void;
   /** Write quote titles for every image that has none. */
   onWriteTitles: () => void;
@@ -200,6 +205,8 @@ export function Gallery({
                   featured={hero}
                   onOpen={() => onOpen(image, filtered)}
                   onDelete={() => onDelete(image)}
+                  onRegenerate={() => onRegenerate(image)}
+                  regenerating={regenerating.has(image.id)}
                 />
               </Reveal>
             );

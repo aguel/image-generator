@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AbsoluteFill,
-  Easing,
   interpolate,
   random,
   spring,
@@ -14,10 +14,7 @@ const AMBER = "#d9822b";
 const AMBER_HOT = "#ffc27a";
 const TEAL = "#2f8f8b";
 const INK = "#0e0e0d";
-const PAPER = "#f4f2ed";
-const BLADE_LIGHT = "#e9e5dd";
 const DANGER = "#d6453a";
-const MONO = "var(--font-mono), ui-monospace, monospace";
 
 /* ------------------------------------------------------------------ */
 /* Iris — six half-planes rotated 60° apart form a hexagonal aperture. */
@@ -66,180 +63,185 @@ function Iris({
   );
 }
 
-function Grain({ seed, opacity = 0.08 }: { seed: number; opacity?: number }) {
-  return (
-    <AbsoluteFill style={{ mixBlendMode: "multiply", opacity, pointerEvents: "none" }}>
-      <svg width="100%" height="100%">
-        <filter id={`grain-${seed}`}>
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={seed} stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter={`url(#grain-${seed})`} />
-      </svg>
-    </AbsoluteFill>
-  );
+/* ------------------------------------------------------------------ */
+/* ImageDraft — the idle preview, waiting and generating tiles.        */
+/* ------------------------------------------------------------------ */
+// A wall of small coloured dots on a fixed grid, glowing against black. Slow waves swell and brighten the dots,
+// a bright diagonal band passes across them, and single dots twinkle, as if the picture were
+// still forming. The finished image then sharpens into place from the top down
+// (DevelopingImage in Tile.tsx).
+//
+//  idle     The full spectrum at low strength, with slow waves and an unhurried band.
+//  queued   Grey and nearly still; the band is slow and dim.
+//  running  Vivid and quick; on the job's own clock more of the wall lights up,
+//           so the tile visibly fills in while it works.
+// Each frame is a pure function of time. Reduced motion holds a still frame.
+
+export type DraftMode = "idle" | "queued" | "running";
+type RGB = [number, number, number];
+
+const TAU = Math.PI * 2;
+const GREY: RGB = [176, 172, 166];
+/** Colours around the wall's hue wheel; the wheel wraps, so the last blends back into the first. */
+const DOT_HUES = ["#f0386b", "#ff7a2f", "#ffbf1f", "#37c871", "#14b8c4", "#2f7bff", "#7350ff", "#d93fd0"];
+const DOT_SHADES = 40;
+/** Grid spacing in on-screen CSS pixels, so dots stay the same small size however large the tile is. */
+const DOT_PITCH = 8;
+const SPRITE_SIZE = 8;
+/** Smallest dot radius in device pixels; below this, dots on a standard-density screen fade to almost nothing. */
+const DOT_MIN_RADIUS = 0.8;
+
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const easeOut = (x: number) => 1 - (1 - clamp01(x)) ** 3;
+const rgbOf = (hex: string): RGB => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const mixRGB = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const cssOf = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+/** A repeatable value in 0–1 for one dot, cheap enough to call for thousands of them. */
+const hashOf = (n: number) => {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/** Per-mode feel: dot size and opacity at rest and at peak (size is a share of the pitch), and how the wall moves. */
+const DRAFT_LOOK: Record<DraftMode, { size: [number, number]; alpha: [number, number]; flow: number; band: number; bandSeconds: number; twinkle: number; spin: number }> = {
+  idle: { size: [0.056, 0.125], alpha: [0.6, 1], flow: 0.45, band: 0.3, bandSeconds: 5, twinkle: 0.25, spin: 0.012 },
+  queued: { size: [0.05, 0.088], alpha: [0.34, 0.68], flow: 0.14, band: 0.2, bandSeconds: 7, twinkle: 0.1, spin: 0 },
+  running: { size: [0.056, 0.156], alpha: [0.5, 1], flow: 1.15, band: 0.75, bandSeconds: 2.4, twinkle: 0.45, spin: 0.04 },
+};
+
+interface Dot {
+  x: number;
+  y: number;
+  u: number;
+  v: number;
+  /** Twinkle phase and speed, and a small hue offset that keeps neighbours from looking airbrushed. */
+  phase: number;
+  speed: number;
+  jitter: number;
 }
 
-function CropMarks({ inset, length, color, opacity }: { inset: number; length: number; color: string; opacity: number }) {
-  const s = { position: "absolute" as const, width: length, height: length, borderColor: color, opacity };
-  return (
-    <>
-      <div style={{ ...s, left: inset, top: inset, borderLeft: "1.5px solid", borderTop: "1.5px solid" }} />
-      <div style={{ ...s, right: inset, top: inset, borderRight: "1.5px solid", borderTop: "1.5px solid" }} />
-      <div style={{ ...s, left: inset, bottom: inset, borderLeft: "1.5px solid", borderBottom: "1.5px solid" }} />
-      <div style={{ ...s, right: inset, bottom: inset, borderRight: "1.5px solid", borderBottom: "1.5px solid" }} />
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* DevelopingFrame — per-tile loader while an image is being exposed. */
-/* ------------------------------------------------------------------ */
-export function DevelopingFrame({ index = 0, queued = false, position }: { index?: number; queued?: boolean; position?: number }) {
-  const frame = useCurrentFrame();
-  const { width, height, durationInFrames } = useVideoConfig();
-  const t = frame / durationInFrames; // 0..1 per loop
-  const phase = index * 0.37;
-  const unit = Math.min(width, height);
-
-  const glowX = 50 + Math.sin((t + phase) * Math.PI * 2) * 18;
-  const glowY = 45 + Math.cos((t + phase) * Math.PI * 2) * 12;
-  const scanY = interpolate((t * 2 + phase) % 1, [0, 1], [-0.15, 1.15], { easing: Easing.inOut(Easing.cubic) });
-  // Waiting jobs keep the iris nearly shut and breathing slowly; running jobs open and hunt.
-  const open = queued ? 0.08 + Math.sin((t + phase) * Math.PI * 2) * 0.05 : 0.45 + Math.sin((t + phase) * Math.PI * 4) * 0.22;
-  const intro = spring({ frame, fps: 30, config: { damping: 18, mass: 0.8 } });
-  const dots = ".".repeat(1 + (Math.floor(frame / 8) % 3));
-  const counter = String(Math.floor(frame / 2) + index * 113).padStart(4, "0");
-
-  // Emerging "latent image": soft blobs that drift, as if the print were coming up in the tray.
-  const blobs = Array.from({ length: 5 }).map((_, i) => {
-    const seed = index * 10 + i;
-    const bx = random(`bx${seed}`) * 100;
-    const by = random(`by${seed}`) * 100;
-    const drift = Math.sin((t + random(`d${seed}`)) * Math.PI * 2) * 6;
-    const warm = random(`w${seed}`) > 0.45;
-    return { x: bx + drift, y: by - drift, r: 30 + random(`r${seed}`) * 40, color: warm ? AMBER : TEAL, o: 0.1 + random(`o${seed}`) * 0.12 };
+/** All sizes are in device pixels. Dots sit on pixel centres at a whole-pixel pitch, which keeps the wall free of moiré. */
+function dotGrid(width: number, height: number, base: number, pitch: number): Dot[] {
+  const cols = Math.floor(width / pitch);
+  const rows = Math.floor(height / pitch);
+  const left = Math.round((width - (cols - 1) * pitch) / 2) + 0.5;
+  const top = Math.round((height - (rows - 1) * pitch) / 2) + 0.5;
+  return Array.from({ length: cols * rows }, (_, i) => {
+    const x = left + (i % cols) * pitch;
+    const y = top + Math.floor(i / cols) * pitch;
+    const n = i + base * 1000;
+    return { x, y, u: x / width, v: y / height, phase: hashOf(n) * TAU, speed: 1 + hashOf(n + 0.31) * 2.5, jitter: hashOf(n + 0.67) - 0.5 };
   });
+}
+
+/** One small antialiased circle per colour, shared by every tile: drawing these is far cheaper than thousands of arcs. */
+let dotSprites: { shades: HTMLCanvasElement[]; grey: HTMLCanvasElement } | null = null;
+function getDotSprites() {
+  if (dotSprites) return dotSprites;
+  const sprite = (colour: RGB) => {
+    const c = document.createElement("canvas");
+    c.width = c.height = SPRITE_SIZE;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = cssOf(colour);
+    ctx.beginPath();
+    ctx.arc(SPRITE_SIZE / 2, SPRITE_SIZE / 2, SPRITE_SIZE / 2 - 0.5, 0, TAU);
+    ctx.fill();
+    return c;
+  };
+  const hues = DOT_HUES.map(rgbOf);
+  const shades = Array.from({ length: DOT_SHADES }, (_, i) => {
+    const at = (i / DOT_SHADES) * hues.length;
+    const from = Math.floor(at);
+    return sprite(mixRGB(hues[from], hues[(from + 1) % hues.length], at - from));
+  });
+  dotSprites = { shades, grey: sprite(GREY) };
+  return dotSprites;
+}
+
+function drawDotWall(ctx: CanvasRenderingContext2D, dots: Dot[], pitch: number, mode: DraftMode, t: number, base: number, warmed: number) {
+  const look = DRAFT_LOOK[mode];
+  const { shades, grey } = getDotSprites();
+  const offset = base * TAU;
+  const flow = t * look.flow + offset;
+  // The band crosses the tile once per period; each tile starts at its own point, so bands ripple across the grid.
+  const band = (((t / look.bandSeconds + base) % 1) + 1) % 1 * 2.2 - 0.6;
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  for (const d of dots) {
+    const wave = 0.5 + 0.25 * (Math.sin(d.u * 7 + d.v * 3 + flow) + Math.sin(d.v * 9 - d.u * 4 - flow * 0.7 + offset * 3));
+    const gap = d.u * 0.7 + d.v * 0.3 - band;
+    const spark = 0.5 + 0.5 * Math.sin(t * d.speed + d.phase);
+    const energy = clamp01(wave * wave + look.band * Math.exp(-gap * gap * 28) + look.twinkle * spark * spark * spark + warmed * 0.3);
+    const r = Math.max(DOT_MIN_RADIUS, pitch * (look.size[0] + (look.size[1] - look.size[0]) * energy));
+    const hue = base + d.u * 0.4 + d.v * 0.3 + 0.08 * Math.sin(d.v * 5 + flow) + t * look.spin + d.jitter * 0.07;
+    const shade = Math.floor((hue - Math.floor(hue)) * DOT_SHADES) % DOT_SHADES;
+    ctx.globalAlpha = look.alpha[0] + (look.alpha[1] - look.alpha[0]) * energy;
+    ctx.drawImage(mode === "queued" ? grey : shades[shade], d.x - r, d.y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+export function ImageDraft({
+  mode = "idle",
+  seed = "0",
+  startedAt,
+}: {
+  mode?: DraftMode;
+  seed?: string;
+  /** Epoch ms the job started; running tiles follow the job's real clock, so a remount doesn't restart them. */
+  startedAt?: number;
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const wall = useRef<{ width: number; height: number; base: number; pitch: number; dots: Dot[] } | null>(null);
+  const still = useMemo(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
+  const base = useMemo(() => random(seed), [seed]);
+  const [mountedAt] = useState(() => Date.now());
+  const clock = frame / fps;
+  const t = still ? 3 : mode === "running" && startedAt ? Math.max(0, (mountedAt - startedAt) / 1000 + clock) : clock;
+  const warmed = mode === "running" ? 1 - Math.exp(-t / 25) : 0;
+  const enter = still ? 1 : easeOut(clock / 0.6);
+
+  useEffect(() => {
+    const el = canvas.current;
+    const ctx = el?.getContext("2d");
+    if (!el || !ctx) return;
+    // The Player scales the composition with a transform, so only the on-screen box gives the real pixel size.
+    const box = el.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.round(box.width * dpr);
+    const h = Math.round(box.height * dpr);
+    if (!w || !h) return;
+    const pitch = Math.max(2, Math.round(DOT_PITCH * dpr));
+    let current = wall.current;
+    if (!current || current.width !== w || current.height !== h || current.base !== base || current.pitch !== pitch) {
+      el.width = w;
+      el.height = h;
+      current = wall.current = { width: w, height: h, base, pitch, dots: dotGrid(w, h, base, pitch) };
+    }
+    drawDotWall(ctx, current.dots, current.pitch, mode, t, base, warmed);
+  }, [frame, mode, t, base, warmed]);
 
   return (
-    <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
-      <AbsoluteFill
-        style={{
-          background: `radial-gradient(60% 55% at ${glowX}% ${glowY}%, rgba(217,130,43,0.20), rgba(217,130,43,0) 70%)`,
-        }}
-      />
-      {blobs.map((b, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            left: `${b.x}%`,
-            top: `${b.y}%`,
-            width: unit * (b.r / 100),
-            height: unit * (b.r / 100),
-            transform: "translate(-50%,-50%)",
-            borderRadius: "50%",
-            background: b.color,
-            opacity: b.o * (queued ? 0.35 : 1) * (0.6 + 0.4 * Math.sin((t + i * 0.2) * Math.PI * 2)),
-            filter: `blur(${unit * 0.09}px)`,
-          }}
-        />
-      ))}
-
-      {/* Scanner sweep (only while running) */}
-      <div
-        style={{
-          opacity: queued ? 0 : 1,
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: `${scanY * 100}%`,
-          height: unit * 0.28,
-          transform: "translateY(-100%)",
-          background: "linear-gradient(180deg, rgba(217,130,43,0) 0%, rgba(217,130,43,0.06) 70%, rgba(217,130,43,0.35) 99%, rgba(14,14,13,0.55) 100%)",
-        }}
-      />
-
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-        <div style={{ transform: `scale(${interpolate(intro, [0, 1], [0.6, 1])})`, opacity: intro }}>
-          <Iris id={`dev-${index}`} size={unit * 0.26} open={open} rotation={t * 360 + index * 17} blade={BLADE_LIGHT} />
-        </div>
-      </AbsoluteFill>
-
-      <CropMarks inset={unit * 0.05} length={unit * 0.07} color={INK} opacity={0.35 * intro} />
-
-      <div
-        style={{
-          position: "absolute",
-          left: unit * 0.07,
-          top: unit * 0.065,
-          fontFamily: MONO,
-          fontSize: unit * 0.036,
-          letterSpacing: "0.18em",
-          color: INK,
-          opacity: 0.7,
-          display: "flex",
-          alignItems: "center",
-          gap: unit * 0.02,
-        }}
-      >
-        <span
-          style={{
-            width: unit * 0.022,
-            height: unit * 0.022,
-            borderRadius: "50%",
-            background: queued ? INK : DANGER,
-            opacity: queued ? 0.3 : Math.floor(frame / 15) % 2 ? 1 : 0.25,
-          }}
-        />
-        {queued ? `IN QUEUE${position ? ` · #${position}` : ""}` : `IMAGE ${index + 1}`}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          right: unit * 0.07,
-          top: unit * 0.065,
-          fontFamily: MONO,
-          fontSize: unit * 0.036,
-          letterSpacing: "0.18em",
-          color: AMBER,
-          opacity: 0.8,
-        }}
-      >
-        FR {counter}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: unit * 0.07,
-          bottom: unit * 0.065,
-          fontFamily: MONO,
-          fontSize: unit * 0.038,
-          letterSpacing: "0.22em",
-          color: INK,
-          opacity: 0.85,
-        }}
-      >
-        {queued ? `WAITING${dots}` : `GENERATING${dots}`}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          right: unit * 0.07,
-          bottom: unit * 0.065,
-          fontFamily: MONO,
-          fontSize: unit * 0.032,
-          letterSpacing: "0.14em",
-          color: INK,
-          opacity: 0.45,
-        }}
-      >
-        ƒ/1.8 · 1/60
-      </div>
-      <Grain seed={(frame % 6) + 1} />
+    <AbsoluteFill style={{ background: INK, overflow: "hidden" }}>
+      <canvas ref={canvas} style={{ width: "100%", height: "100%", opacity: enter }} />
     </AbsoluteFill>
   );
 }
+
+/**
+ * The finished-image reveal (ChatGPT style), driven from Tile.tsx: a blurred copy of the
+ * image fades in over the draft, then the sharp image sharpens into place from the top
+ * down behind a soft, feathered edge. `revealProgress` runs 0 → 1 over `REVEAL_FRAMES`
+ * (30fps frames); `REVEAL_FEATHER` is the height of the soft edge, as a share of the image.
+ */
+export const REVEAL_FRAMES = 60;
+export const REVEAL_FEATHER = 0.28;
+export const revealProgress = (frame: number, fps: number) =>
+  spring({ frame: frame - 8, fps, config: { damping: 200, stiffness: 40 }, durationInFrames: REVEAL_FRAMES - 8 });
 
 /* ------------------------------------------------------------------ */
 /* ApertureSpinner — the app-wide activity indicator.                  */
@@ -339,69 +341,6 @@ export function ConfirmGlyph({ variant = "delete" }: { variant?: GlyphVariant })
 }
 
 /* ------------------------------------------------------------------ */
-/* Viewfinder — empty-state composition.                               */
-/* ------------------------------------------------------------------ */
-export function Viewfinder({ reticle = true }: { reticle?: boolean }) {
-  const frame = useCurrentFrame();
-  const { width, height, durationInFrames, fps } = useVideoConfig();
-  const t = frame / durationInFrames;
-  const unit = Math.min(width, height);
-  // Focus "hunts" then locks for the second half of the loop.
-  const hunt = t < 0.45 ? Math.sin(t * Math.PI * 9) * (1 - t / 0.45) : 0;
-  const locked = t >= 0.45;
-  const leak = interpolate(t, [0, 1], [-40, 140]);
-  const iso = locked ? 800 : [400, 640, 1250, 800][Math.floor(frame / 5) % 4];
-  const lockPop = spring({ frame: frame - durationInFrames * 0.45, fps, config: { damping: 12 } });
-
-  return (
-    <AbsoluteFill style={{ overflow: "hidden" }}>
-      <AbsoluteFill
-        style={{
-          background: `linear-gradient(105deg, transparent ${leak - 30}%, rgba(217,130,43,0.07) ${leak - 8}%, rgba(217,130,43,0.13) ${leak}%, rgba(47,143,139,0.06) ${leak + 12}%, transparent ${leak + 30}%)`,
-        }}
-      />
-      <CropMarks inset={unit * 0.06} length={unit * 0.09} color={INK} opacity={0.3} />
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", opacity: reticle ? 1 : 0 }}>
-        <div
-          style={{
-            width: unit * 0.22,
-            height: unit * 0.22,
-            border: `1.5px solid ${locked ? AMBER : INK}`,
-            opacity: locked ? 0.9 : 0.45,
-            transform: `scale(${1 + hunt * 0.25 + (locked ? (1 - lockPop) * 0.15 : 0)})`,
-            borderRadius: 4,
-          }}
-        />
-        <div style={{ position: "absolute", width: 1, height: unit * 0.06, background: INK, opacity: 0.35 }} />
-        <div style={{ position: "absolute", height: 1, width: unit * 0.06, background: INK, opacity: 0.35 }} />
-      </AbsoluteFill>
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: unit * 0.08,
-          display: "flex",
-          justifyContent: "center",
-          gap: unit * 0.06,
-          fontFamily: MONO,
-          fontSize: unit * 0.032,
-          letterSpacing: "0.2em",
-          color: INK,
-          opacity: 0.55,
-        }}
-      >
-        <span>ISO {iso}</span>
-        <span>ƒ/1.8</span>
-        <span>1/60</span>
-        <span style={{ color: locked ? AMBER : INK }}>{locked ? "AF ●" : "AF ○"}</span>
-      </div>
-      <Grain seed={(frame % 6) + 1} opacity={0.05} />
-    </AbsoluteFill>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Scribble — placeholder lines "being written" while prompts load.    */
 /* ------------------------------------------------------------------ */
 export function Scribble({ seed = 0 }: { seed?: number }) {
@@ -438,3 +377,9 @@ export function Scribble({ seed = 0 }: { seed?: number }) {
     </AbsoluteFill>
   );
 }
+
+/** Seed shared by the idle preview tile and the job that later fills its slot. */
+export const latentSeed = (styleId: string, index: number) => `${styleId}:${index}`;
+
+/** Idle and waiting frames never visibly loop (one hour at 30fps); running frames follow the job's own clock. */
+export const LATENT_DURATION = 30 * 60 * 60;

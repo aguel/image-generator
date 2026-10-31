@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Stage } from "@/components/remotion/Stage";
 import { Scribble } from "@/components/remotion/compositions";
 import { ASPECTS, type AspectId } from "@/lib/aspects";
-import { STYLES, type StyleId } from "@/lib/styles";
+import { STYLES, getStyle, type StyleId } from "@/lib/styles";
 import { FPS, interpolate, spring, SPRINGS } from "@/lib/motion";
 import type { EnhancedPrompt } from "@/lib/types";
 import { Reveal } from "@/components/ui/Reveal";
@@ -326,7 +326,7 @@ export function PromptsView({
               </div>
               <div className="flex min-w-[200px] flex-col gap-1.5">
                 <span className="text-[12px] font-medium text-ink-soft">Style</span>
-                <StylePicker value={lab.styleId} onChange={(v) => onChange({ styleId: v })} placement="up" compact />
+                <StylePicker value={lab.styleId} onChange={(v) => { const { aspect } = getStyle(v); onChange({ styleId: v, ...(aspect && { aspect }) }); }} placement="up" compact />
               </div>
               <Seg
                 label="Aspect ratio"

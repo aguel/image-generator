@@ -163,15 +163,15 @@ export function Composer({
                   role="radio"
                   aria-checked={active}
                   title={style.tagline}
-                  onClick={() => onChange({ styleId: style.id })}
+                  onClick={() => onChange({ styleId: style.id, ...(style.aspect && { aspect: style.aspect }) })}
                   className={`flex min-w-0 items-center gap-2.5 rounded-[14px] p-2 text-left short:gap-2 short:px-1.5 short:py-1 transition-[background-color,box-shadow] duration-500 ease-fluid ${
                     span ? "col-span-2" : ""
                   } ${active ? "bg-paper shadow-[0_0_0_1.5px_var(--ink),0_10px_24px_-14px_rgba(14,14,13,0.45)]" : "tile"}`}
                 >
-                  <StyleIcon style={style} className="h-10 w-10 rounded-[10px] short:h-8 short:w-8 short:rounded-[8px]" />
+                  <StyleIcon style={style} className="h-10 w-10 rounded-[10px] short:h-7 short:w-7 short:rounded-[8px]" />
                   <span className="min-w-0">
                     <span className="block truncate text-[14px] font-medium leading-tight text-ink short:text-[13px]">{style.name}</span>
-                    <span className="mt-0.5 block truncate text-[12px] leading-tight text-ink-soft">{style.tagline}</span>
+                    <span className="mt-0.5 block truncate text-[12px] leading-tight text-ink-soft short:hidden">{style.tagline}</span>
                   </span>
                 </button>
               );

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Compact spacing for short desktop viewports so the studio still fits in one view. */
-@custom-variant short (@media (min-width: 1024px) and (max-height: 820px));
+@custom-variant short (@media (min-width: 1024px) and (max-height: 920px));
 
 /* Darkroom: light "soft structuralism". Pure white paper, ink type, hairline
    machined bezels, and diffuse ambient shadows. Amber is the one warm accent,
