@@ -6,6 +6,7 @@ import type { ImageRecord, QueueJob, QueueSnapshot } from "../types";
 import { addImage } from "./store";
 import { generateImage, imageModel } from "./openai";
 import { titleFor } from "./quote";
+import { finishImage } from "./finish";
 
 /**
  * In-memory generation queue.
@@ -79,7 +80,9 @@ async function run(job: Internal) {
   try {
     const aspect = getAspect(job.aspect);
     const style = getStyle(job.styleId);
-    const bytes = await generateImage(style.build(job.prompt), aspect, job.controller.signal);
+    const raw = await generateImage(style.build(job.prompt), aspect, job.controller.signal);
+    // A light, style-tuned detail pass so people stay crisp when zoomed.
+    const bytes = await finishImage(raw, style);
     // Cancelled while the request was in flight: drop the result.
     if (job.status !== "running") return;
     const id = randomUUID().replace(/-/g, "").slice(0, 16);

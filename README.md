@@ -30,7 +30,8 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   shafts of light from high windows through dust and haze, warm sparks and lamps against cool teal-slate shadows.
   **Solitude** is a wide, quiet moment of one person alone, in whatever setting the prompt describes (field, forest,
   beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
-  **Raw** sends your prompt untouched.
+  **Raw** sends your prompt as written, plus only the checks every style shares: the Philippines setting with Filipino
+  people (unless you name another place or nationality) and anatomy (no extra limbs, heads or fingers, no distorted faces).
 - **Aspect ratios.** Landscape 3:2 (1536×1024), Square 1:1 (1024×1024), Portrait 2:3 (1024×1536).
 - **1–8 images per run.** Each image is its own request, so tiles finish independently. While waiting, each
   tile plays a Remotion "developing" composition (iris, scanner sweep, latent-image glow, film grain, frame counter)

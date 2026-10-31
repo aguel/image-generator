@@ -37,6 +37,11 @@ See `README.md` for features, API and data layout. This file covers the conventi
 - **Route handlers** that read the filesystem at request time call `await connection()` (GET) so they are never prerendered
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
+- **Detail pass**: every generated image goes through `finishImage()` (`lib/server/finish.ts`, `sharp`) before it is saved: a
+ light luminance unsharp mask whose strength comes from `StylePreset.finish` (`crisp` Cinematic / Solitude, `natural` Melancholy /
+ Director's Cut, `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
+ only IHDR/PLTE/tRNS/IDAT/IEND and colour chunks are kept, so C2PA `caBX` content credentials, EXIF, XMP, text and
+ time chunks never reach `data/images/`. Keep the sharpen below the level that makes halos.
 - **Backup API** endpoints must call `guardInternal(request)` first.
 - **Deleting an image** (`DELETE /api/images/:id`) also calls `forgetImage()` in the queue, so the job leaves the Queue
  history; `Studio` filters deleted ids from the snapshot until the next poll.
@@ -139,19 +144,33 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 ## Styles
 
-`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters the
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. Every style, Raw
+included, puts `PHILIPPINES` right after the subject (the scene is in the Philippines and every person is Filipino or
+Filipina unless the prompt names another country or nationality; Melancholy's village and Moonlight's fallback lagoon are
+Philippine too), and the Prompts enhancer writes Filipino people and Philippine places by default. Every style also ends with `NATURAL_ANATOMY` (correct heads, limbs, hands, feet and faces; believable interactions and geometry)
+and starts its Avoid list with `AI_ARTEFACTS` (extra limbs or heads, distorted faces, fused fingers, duplicated people,
+garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters the
 brightest, clearest part after the light shafts and lifts every dark area, so nothing sinks into murky shadow) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
 halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with a
 balanced HDR finish that lifts the subject (no silhouettes), low-to-medium contrast, open shadows with no crushed blacks,
 no vignette, natural saturation, and a subtle painterly touch (smooth tones, softened distant detail, no brushstrokes). The setting and viewpoint always come from the prompt (farm, village, interior looking out...); the lagoon
 is only the fallback when no place is named, and water appears only when described. `MOONLIGHT_SCENE` holds the shared
 setting and composition lines; Night Paint keeps its own glowing, magical
-moon, water, lighting and palette lines. **Melancholy**, **Director's Cut** and **Solitude** share `BRIGHT_HDR`, a
+moon, water, lighting and palette lines. **Melancholy** and **Director's Cut** share `BRIGHT_HDR`, a
 natural HDR finish that lifts the backlit subject to a clear exposure while the bright background (sun, sky, haze,
-windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds. **Cinematic**, **Melancholy**, **Director's Cut**
+windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds.
+**Solitude** uses its own "Exposure" line instead: the person is brightest and the background sits about a stop lower in calm,
+soft light (a small, mostly hidden sun, thin translucent mist, no glare or hazy-white wash). **Director's Cut** favours
+photorealistic texture over punch: low-to-moderate contrast with a soft photographic curve, a "Texture and realism" line,
+and `peopleSharp(...)` called with gentle micro-contrast. **Cinematic**, **Melancholy**, **Director's Cut**
 and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SUBJECT_HDR` (an extra HDR lift on every person while
-the background keeps its own balanced exposure), `PEOPLE_SHARP` (every person ultra-sharp from flagship camera and premium
-prime) and `creamyBokeh(tones)` (smooth, creamy bokeh in each style's own colours). Edit them once to change all four. The Composer shows every style as a
+the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person ultra-sharp from flagship camera and
+premium prime; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)` (smooth, creamy bokeh in each style's own colours). Edit them once to change all four. **Melancholy** and **Solitude**
+also add `SOFT_BACKGROUND_ONLY`: haze, mist, glow, faded tones and blur live only in the background scenery; the people and the
+ground right around them stay crisp, with clear air in front of them and no whole-image soft-focus filter. Melancholy's
+haze is deliberately dramatic (thick, layered golden haze and bold god rays, kept behind the people). Solitude frames the
+person medium (a third to half of the frame height), focuses on the eyes at f/2.8, and has a "Face fill light" line so the
+backlit face stays evenly lit. The Composer shows every style as a
 card (style icon, name, tagline) in a two-column grid; an odd last card spans the row. The prompt card is capped
 (`lg:max-h-[200px]`) so the style cards fit; there are no prompt suggestions. The Prompts action bar uses the compact
 `StylePicker` dropdown (`components/studio/StylePicker.tsx`). Every style has its own glyph in `STYLE_GLYPHS`
