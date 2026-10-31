@@ -38,7 +38,7 @@ See `README.md` for features, API and data layout. This file covers the conventi
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
 - **Detail pass**: every generated image goes through `finishImage()` (`lib/server/finish.ts`, `sharp`) before it is saved: a
- light luminance unsharp mask whose strength comes from `StylePreset.finish` (`crisp` Cinematic / Solitude, `natural` Melancholy /
+ light luminance unsharp mask whose strength comes from `StylePreset.finish` (`crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
  Director's Cut, `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
  only IHDR/PLTE/tRNS/IDAT/IEND and colour chunks are kept, so C2PA `caBX` content credentials, EXIF, XMP, text and
  time chunks never reach `data/images/`. Keep the sharpen below the level that makes halos.
@@ -144,10 +144,15 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 ## Styles
 
-`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. Every style, Raw
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape and Raw.
+**Landscape** is professional Philippine landscape photography: cinematic realistic sky, a smooth editorial HDR balance,
+and front-to-back sharpness at f/8–f/11 from hyperfocal focus (so it deliberately skips `PEOPLE_SHARP` / `creamyBokeh` and
+bans bokeh); its detail pass is `crisp`. Every style, Raw
 included, puts `PHILIPPINES` right after the subject (the scene is in the Philippines and every person is Filipino or
 Filipina unless the prompt names another country or nationality; Melancholy's village and Moonlight's fallback lagoon are
-Philippine too), and the Prompts enhancer writes Filipino people and Philippine places by default. Every style also ends with `NATURAL_ANATOMY` (correct heads, limbs, hands, feet and faces; believable interactions and geometry)
+Philippine too), and the Prompts enhancer writes Filipino people and Philippine places by default. `PHILIPPINES` also
+sets Filipino headwear (rounded-crown buri/straw farmer's hat, buntal hat, cap, bimpo towel) and every Avoid list includes
+`NOT_PHILIPPINES` (no pointed conical Vietnamese nón lá hats or other countries' clothing unless described). Every style also ends with `NATURAL_ANATOMY` (correct heads, limbs, hands, feet and faces; believable interactions and geometry)
 and starts its Avoid list with `AI_ARTEFACTS` (extra limbs or heads, distorted faces, fused fingers, duplicated people,
 garbled text); Raw appends only those two lines to the prompt. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters the
 brightest, clearest part after the light shafts and lifts every dark area, so nothing sinks into murky shadow) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
@@ -164,8 +169,10 @@ soft light (a small, mostly hidden sun, thin translucent mist, no glare or hazy-
 photorealistic texture over punch: low-to-moderate contrast with a soft photographic curve, a "Texture and realism" line,
 and `peopleSharp(...)` called with gentle micro-contrast. **Cinematic**, **Melancholy**, **Director's Cut**
 and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SUBJECT_HDR` (an extra HDR lift on every person while
-the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person ultra-sharp from flagship camera and
-premium prime; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)` (smooth, creamy bokeh in each style's own colours). Edit them once to change all four. **Melancholy** and **Solitude**
+the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person and what they hold ultra-sharp and photorealistic, from a flagship
+body and premium prime stopped down to f/4–f/5.6; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)`
+(ultra-realistic, creamy bokeh with real lens texture in each style's own colours, the background placed far enough back to
+melt away at that aperture). Edit them once to change them everywhere: Moonlight and Raw use both too; Night Paint and Landscape do not. **Melancholy** and **Solitude**
 also add `SOFT_BACKGROUND_ONLY`: haze, mist, glow, faded tones and blur live only in the background scenery; the people and the
 ground right around them stay crisp, with clear air in front of them and no whole-image soft-focus filter. Melancholy's
 haze is deliberately dramatic (thick, layered golden haze and bold god rays, kept behind the people). Solitude frames the
@@ -178,8 +185,9 @@ card (style icon, name, tagline) in a two-column grid; an odd last card spans th
 needs a glyph there. A retired id (for example an old "dramatic" record) falls back to
 Cinematic through `getStyle()`. **Cinematic** is framed as a wide-angle environmental shot (24–35mm, subject full-body or knees-up taking a third to half of the frame height, never a tight portrait) and reproduces the reference photos: low-key practical light (fluorescent and
 tungsten), a cool teal foreground over a mostly neutral, dark background with only a faint teal hint (skin stays natural, slightly cooled), an ultra-sharp subject opened up by soft ambient fill on the face and body, deep blacks with a slight matte lift,
-high micro-contrast, a razor-thin focus plane with creamy bokeh, and a minimal, uncluttered background (no crowds or busy
-props behind the subject; grit stays on the subject and their surface). To tune it, edit `CINEMATIC_TEMPLATE`. Keep it subject-agnostic: the user's
+high micro-contrast, people sharp at f/4–f/5.6 with creamy, textured bokeh behind them, and a minimal, uncluttered background (no crowds or busy
+props behind the subject; grit stays on the subject and their surface). A "Fill and ambient light on the subject" line keeps every person evenly filled (shadows about a stop below the key,
+visible eyes and catchlights); the low-key mood stays in the background. To tune it, edit `CINEMATIC_TEMPLATE`. Keep it subject-agnostic: the user's
 prompt supplies the subject, and the template supplies only look and feel.
 
 ## Data

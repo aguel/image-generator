@@ -17,7 +17,7 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   It frames the scene as a wide-angle environmental shot (subject full-body or knees-up in their space, not a close-up
   portrait), with a cool teal foreground over a mostly neutral, dark, uncluttered background, soft ambient fill light on
   the face and body, natural skin and deep blacks. It asks for flagship optics: a high-resolution body with a premium fast
-  24–35mm prime, giving an ultra-sharp subject and smooth, creamy bokeh in the far background.
+  24–35mm prime stopped down to f/4–f/5.6, giving an ultra-sharp subject and creamy, textured bokeh in the far background.
   **Moonlight** is a realistic moonlit night in whatever place the prompt describes (a farm, a village, a view from
   inside a house...): a full moon with a soft halo in a deep blue sky, warm amber window and lantern light, foliage framing,
   a balanced HDR finish that keeps the subject bright, low-to-medium contrast, natural colour and a subtle painterly touch. With no place named it falls back to a tropical lagoon.
@@ -30,6 +30,8 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   shafts of light from high windows through dust and haze, warm sparks and lamps against cool teal-slate shadows.
   **Solitude** is a wide, quiet moment of one person alone, in whatever setting the prompt describes (field, forest,
   beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
+  **Landscape** is professional landscape photography of the Philippines: a cinematic but realistic sky, a smooth
+  editorial HDR balance between light and shadow, and ultra-sharp detail from foreground to horizon (f/8–f/11, no bokeh).
   **Raw** sends your prompt as written, plus only the checks every style shares: the Philippines setting with Filipino
   people (unless you name another place or nationality) and anatomy (no extra limbs, heads or fingers, no distorted faces).
 - **Aspect ratios.** Landscape 3:2 (1536×1024), Square 1:1 (1024×1024), Portrait 2:3 (1024×1536).

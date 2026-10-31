@@ -83,6 +83,7 @@ vary the subject's age, action, setting, time of day, camera distance and story 
 Each prompt describes only the subject, action and environment in 1–3 sentences (30–70 words).
 Do NOT mention camera models, lenses, film stocks, colour grading, lighting style or art style. A separate style preset adds those.
 Unless the idea names another country or nationality, set every prompt in the Philippines with Filipino people (say "Filipino" or "Filipina" and name a fitting Philippine place or setting).
+Farmers and outdoor workers wear Filipino headwear (a woven buri or straw farmer's hat with a rounded crown, a buntal hat, a cap, or a towel over the head), never a pointed conical Vietnamese hat.
 Never include text, logos, watermarks, real people's names or anything unsafe.
 Respond with JSON only, matching: {"prompts":[{"title":"2–5 word title","prompt":"..."}]}`;
 

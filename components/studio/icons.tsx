@@ -150,6 +150,14 @@ const STYLE_GLYPHS: Record<StyleId, ReactNode> = {
       <path d="M2.5 13.5h4M9 11.5c.9.5 1.8.5 2.6 0s1.4-.4 1.9 0M9.5 13.5c.7.3 1.4.3 2 0" />
     </>
   ),
+  // Landscape: mountains under a sun with a cloud.
+  landscape: (
+    <>
+      <path d="M1.5 13.5l4-6 2.5 3.2 2-2.7 4.5 5.5z" />
+      <circle cx="11.5" cy="4" r="1.5" />
+      <path d="M2.5 5.5h3.5M3.5 3.8h1.8" />
+    </>
+  ),
   // Raw: a plain text cursor (the prompt as written).
   raw: (
     <>
