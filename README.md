@@ -36,8 +36,8 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   editorial HDR balance between light and shadow, and ultra-sharp detail from foreground to horizon (f/8–f/11, no bokeh).
   Anyone in the scene who needs a hat wears a native Filipino one, and a Vietnamese or cone-shaped hat in your prompt is replaced.
   **Portrait** is an extreme close-up of a face in a landscape frame, lit like a studio shot: a raking side light plus soft fill
-  and ambient light that open up the dark areas of the person, on a near-black background. A heavily muted grade with chocolate
-  brown skin (unless you describe another complexion), high contrast only on the facial contours, and every pore and wrinkle resolved. If your prompt mentions smoke or something that makes it (a
+  and ambient light that open up the dark areas of the person, on a near-black background with a barely visible red and blue glow. Mention a background in your prompt ("a rice field in the background") and it uses that instead, with no glow. A heavily muted grade with deep, dark
+  chocolate skin and clear skin texture (unless you describe another complexion), a soft strobe fill on the face, glossy, glass-like eyes that clearly mirror the scenery, high contrast only on the facial contours, wrinkles and fine lines, and every pore and wrinkle resolved. If your prompt mentions smoke or something that makes it (a
   pipe, a cigarette, incense), the smoke becomes a bold, curling part of the picture; otherwise there is none.
   **Focus** is a fine-art environmental portrait with the feel of an Old Master painting: one or two ultra-sharp, highly
   detailed people in traditional dress, softly lit as if by a studio light on location with a diffused strobe fill on the face, against a dark, misty background of
