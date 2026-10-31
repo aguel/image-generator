@@ -139,14 +139,19 @@ See `README.md` for features, API and data layout. This file covers the conventi
 
 ## Styles
 
-`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
-halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with low-to-medium contrast, open shadows with no crushed blacks, no vignette and
-natural saturation. The setting and viewpoint always come from the prompt (farm, village, interior looking out...); the lagoon
+`lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude and Raw. **Director's Cut** (wide workshop film still, god rays through haze, teal/amber, with a clean grain-free digital finish: smooth haze, sparse dust, no clarity boost; a "Fill light" line keeps the characters the
+brightest, clearest part after the light shafts and lifts every dark area, so nothing sinks into murky shadow) and **Solitude** (one person alone in any setting the prompt names, backlit sunburst through leaves and mist; it no longer forces a river) each document their references in the comment above the template. **Melancholy** reproduces golden-hour village references (backlit low sun, dusty haze and god rays, amber/honey palette with muted sage foliage, lifted soft shadows, nostalgic quiet moments, subjects often from behind). **Moonlight** (night landscapes) is tuned for realism: a true-to-life long exposure under a full moon (natural
+halo, deep blue sky, real rather than glowing water, warm window and lantern light, foliage framing, deep depth of field), with a
+balanced HDR finish that lifts the subject (no silhouettes), low-to-medium contrast, open shadows with no crushed blacks,
+no vignette, natural saturation, and a subtle painterly touch (smooth tones, softened distant detail, no brushstrokes). The setting and viewpoint always come from the prompt (farm, village, interior looking out...); the lagoon
 is only the fallback when no place is named, and water appears only when described. `MOONLIGHT_SCENE` holds the shared
 setting and composition lines; Night Paint keeps its own glowing, magical
 moon, water, lighting and palette lines. **Melancholy**, **Director's Cut** and **Solitude** share `BRIGHT_HDR`, a
 natural HDR finish that lifts the backlit subject to a clear exposure while the bright background (sun, sky, haze,
-windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds. The Composer shows every style as a
+windows) keeps its detail; each also adds bounced fill on the subject and avoids silhouettes and blown-out backgrounds. **Cinematic**, **Melancholy**, **Director's Cut**
+and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SUBJECT_HDR` (an extra HDR lift on every person while
+the background keeps its own balanced exposure), `PEOPLE_SHARP` (every person ultra-sharp from flagship camera and premium
+prime) and `creamyBokeh(tones)` (smooth, creamy bokeh in each style's own colours). Edit them once to change all four. The Composer shows every style as a
 card (style icon, name, tagline) in a two-column grid; an odd last card spans the row. The prompt card is capped
 (`lg:max-h-[200px]`) so the style cards fit; there are no prompt suggestions. The Prompts action bar uses the compact
 `StylePicker` dropdown (`components/studio/StylePicker.tsx`). Every style has its own glyph in `STYLE_GLYPHS`

@@ -18,10 +18,11 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   portrait), with a cool teal foreground over a mostly neutral, dark, uncluttered background, soft ambient fill light on
   the face and body, natural skin and deep blacks. It asks for flagship optics: a high-resolution body with a premium fast
   24–35mm prime, giving an ultra-sharp subject and smooth, creamy bokeh in the far background.
-  **Moonlight** is for night landscapes, modelled on a set of tropical lagoon scenes: a full moon with a soft halo in a deep
-  navy/teal sky, luminous turquoise water, warm amber-lit huts with golden reflections, silhouetted palms and wooden boats, rendered as a clean, noise-free, balanced HDR image.
-  **Night Paint** uses the same moonlit lagoon scene and palette as Moonlight, rendered as a luminous painting (visible
-  brushwork, soft painterly edges, glowing glazes, impasto highlights on the moon and lamps).
+  **Moonlight** is a realistic moonlit night in whatever place the prompt describes (a farm, a village, a view from
+  inside a house...): a full moon with a soft halo in a deep blue sky, warm amber window and lantern light, foliage framing,
+  a balanced HDR finish that keeps the subject bright, low-to-medium contrast, natural colour and a subtle painterly touch. With no place named it falls back to a tropical lagoon.
+  **Night Paint** uses the same prompt-driven moonlit scene, rendered as a luminous painting (visible brushwork, soft
+  painterly edges, glowing glazes, impasto highlights on the moon and lamps).
   **Melancholy** is modelled on a set of golden-hour village scenes: low backlit sun through hazy, dusty air with god rays,
   a warm amber and honey palette with muted sage foliage, soft lifted shadows, and quiet, nostalgic everyday moments
   often seen from behind.
