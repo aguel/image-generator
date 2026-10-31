@@ -45,7 +45,7 @@ const PEOPLE_SHARP = peopleSharp();
 const HUMAN_DETAIL =
   "Human detail: every person is ultra-sharp and extremely detailed from head to toe, the clearest thing in the picture — crisply defined facial contours, eyelids, irises and catchlights, individual lashes, brows and strands of hair, every pore, wrinkle, freckle and vein true to the person's age, the tendons and creases of hands and feet, and the definition of muscle and collarbone on any bare skin; this holds for each person in the frame, including a second person and any hands or feet further from the lens.";
 
-/** Focus and Director's Cut: a diffused strobe that makes the face the brightest part of a dark scene. */
+/** Focus, Director's Cut and (for any person) Moonlight: a diffused strobe that makes the face the brightest part of a dark scene. */
 const STROBE_FILL =
   "Strobe fill on the face: a diffused fill strobe, like a beauty dish or small softbox close to the lens and just above it, fires a clean, crisp burst of light on every face in the frame — the face is the brightest, clearest part of the picture; the shadows under the brows, in the eye sockets, under the nose and under the chin are opened to about one stop below the key, so every feature is clearly lit; the eyes are bright with a small, crisp strobe catchlight in each; skin keeps its natural colour and texture with a clean, controlled sheen on the cheekbones and forehead; the strobe falls off quickly past the face and neck, so it never reaches the background.";
 
@@ -138,6 +138,7 @@ const CINEMATIC_TEMPLATE = (subject: string) =>
  *  - lush foliage and palms framing the scene, distant mountain silhouettes
  *  - a clean, noise-free, balanced HDR rendering (blended exposure bracket): the subject lifted
  *    and clearly lit, soft open shadows, gentle highlight roll-off, no deep blacks, no vignette
+ *  - moonlight filling every dark area, so shadows read in soft silver-blue, while it still looks like night
  *  - a light painterly touch: soft, smooth tonal transitions and gently simplified fine detail,
  *    like a photograph with the finish of a fine-art print (Night Paint is the full painting)
  */
@@ -156,15 +157,17 @@ const MOONLIGHT_TEMPLATE = (subject: string) =>
     ...MOONLIGHT_SCENE,
     "Moon and sky: a full moon in the sky with a soft, natural halo, partly veiled by thin, wispy clouds that catch its light; a deep blue night sky that brightens slightly toward the moon and the horizon, as long exposures record it; soft, natural cloud shapes rather than dramatic storm clouds; a few faint stars.",
     "Water (only if the scene has any, such as a lagoon, river, pond or flooded rice paddies): calm, glassy water reflecting the sky and the moon with a natural tint, a soft silvery moon path and long golden reflections from the lamps; real water, not glowing or lit from beneath.",
-    "Lighting: soft, even moonlight as the key light, gently picking out leaves, grass, crops, roofs and paths in pale silvery tones; the subject (the person, house, room or main feature) lifted out of the night with soft, clear light — moonlight plus a gentle warm glow from nearby windows, lanterns or a lamp inside — so it reads bright and detailed, never a dark silhouette; warm amber light falling off naturally onto nearby surfaces; the warm and cool light blend softly rather than clash.",
-    "Colour grade: natural, realistic night colour — deep blue sky, dark natural greens in the foliage and fields, blue-teal water where there is any, warm amber lamplight; moderate, true-to-life saturation; no colour pushed or neon; neutral, believable white balance with the moonlight slightly cool and the lamps warm.",
+    "Lighting: bright, soft, even moonlight as the key light, clearly illuminating leaves, grass, crops, roofs and paths in pale silvery tones; the subject (the person, house, room or main feature) lifted out of the night with soft, clear light — moonlight plus a gentle warm glow from nearby windows, lanterns or a lamp inside — so it reads bright and detailed, never a dark silhouette; warm amber light falling off naturally onto nearby surfaces; the warm and cool light blend softly rather than clash.",
+    "Moonlight in the dark areas: moonlight fills every part of the scene that would otherwise go dark — under trees and eaves, inside foliage and tree canopies, along the shaded sides of houses, rocks and hills, across the foreground ground, and in the frame's corners — like soft, ambient light scattered by the bright sky and thin clouds; these areas glow in soft silver-blue and stay clearly readable, with their shapes, colours and textures visible, and distant hills and treelines show moonlit form rather than flat black shapes; it remains unmistakably night, with a gentle difference between moonlit and shaded areas and soft moon shadows.",
+    "Colour grade: natural, realistic night colour — deep blue sky, moonlit natural greens with a silver-blue sheen in the foliage and fields, blue-teal water where there is any, warm amber lamplight; moderate, true-to-life saturation; no colour pushed or neon; neutral, believable white balance with the moonlight slightly cool and the lamps warm.",
     "Tone and contrast: balanced HDR look with low-to-medium contrast — light and shadow evenly balanced across the frame; the subject brightened and well exposed, with clear faces, clothing, walls and textures; shadows lifted and airy, showing clear detail in foliage, fields, buildings, interiors and the ground, with no pure or crushed blacks; the moon, its halo, the lamps and their reflections keep detail without blowing out; even brightness across the frame with no vignette or darkened edges; smooth, banding-free gradients in the sky; no halos around trees, roofs or the horizon.",
     "Painterly touch: a subtle fine-art finish over the photograph — soft, smooth tonal transitions, gently simplified fine detail in the distance and the sky, delicate soft edges on foliage and clouds, and a quiet luminous glow around the moon and the lamps, like a carefully hand-finished print; the subject stays crisp and real, with no visible brushstrokes, canvas texture or illustration look.",
+    `${STROBE_FILL} This applies only if a person is in the picture: it adds no light to the rest of the night scene, a scene with no people has no strobe at all, and no person is added because of this line.`,
     "Mood: serene, tranquil and peaceful; a quiet, real night in that place.",
     PEOPLE_SHARP,
-    creamyBokeh("deep moonlit blues, dark foliage greens and soft warm lamp orbs"),
+    creamyBokeh("deep moonlit blues, silvery moonlit foliage greens and soft warm lamp orbs"),
     NATURAL_ANATOMY,
-    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, high contrast, punchy or dramatic look, a dark or silhouetted subject, crushed or deep black shadows, heavy vignette, overcooked HDR halos or grey flat tones, over-sharpening or clarity boost, visible brushstrokes or canvas texture, oversaturated or neon colours, replacing the described setting with a beach, sea or lagoon, glowing or radioactive turquoise water, purple tones, heavy fantasy glow, daylight, sunset or golden-hour sky, harsh flash, washed-out grey tones, CGI or illustration look, plastic textures, motion blur on people or animals, film grain, digital noise, speckled or blotchy skies, cluttered crowds, readable text, watermarks, logos.`,
+    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, high contrast, punchy or dramatic look, a dark or silhouetted subject, crushed or deep black shadows, black or unlit patches, murky foliage or trees reduced to dark shapes, a daylight or day-for-night look, heavy vignette, overcooked HDR halos or grey flat tones, over-sharpening or clarity boost, visible brushstrokes or canvas texture, oversaturated or neon colours, replacing the described setting with a beach, sea or lagoon, glowing or radioactive turquoise water, purple tones, heavy fantasy glow, daylight, sunset or golden-hour sky, ${STROBE_AVOID}, washed-out grey tones, CGI or illustration look, plastic textures, motion blur on people or animals, film grain, digital noise, speckled or blotchy skies, cluttered crowds, readable text, watermarks, logos.`,
   ].join("\n");
 
 /**
@@ -313,6 +316,13 @@ const SOLITUDE_TEMPLATE = (subject: string) =>
     `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, close-up portrait framing, crowds or extra people near the subject, harsh midday light, cold or blue colour casts, oversaturated colours, an underexposed or silhouetted subject, a dark, shadowed or backlit-black face, eyes lost in shadow, a tiny distant figure with no facial detail, an overly bright, glaring, washed-out or hazy-white background, a large blinding sun or heavy lens flare, a blown-out sky, overcooked HDR halos or grey flat tones, a brightened or flattened background, a soft, hazy, blurry or out-of-focus subject, mist or bloom over the person, an overall dreamy or soft-focus filter, busy, harsh, flat or fake-looking bokeh, crushed black shadows, plastic or airbrushed skin, cartoon, illustration or CGI look, heavy grain or noise, readable text, watermarks, logos.`,
   ].join("\n");
 
+/** Hat phrases Landscape never passes to the model: Vietnamese and other pointed, cone-shaped hats, in any wording. */
+const FOREIGN_HAT =
+  /\b(?:(?:vietnamese|vietnam|viet|conical|cone[- ]shaped|pointed|asian|chinese|coolie)\s+(?:(?:straw|rice|paddy|farmer'?s?|palm|leaf|woven|bamboo)\s+)*hats?|(?:rice|paddy)(?:\s+paddy)?\s+hats?|n[oó]n(?:\s+l[aá])?\s+hats?|n[oó]n\s+l[aá])(?![\p{L}\p{N}])/giu;
+
+/** Landscape's hat filter: swaps those phrases in the prompt for a native Filipino hat before the model sees them. */
+const filipinoHats = (subject: string) => subject.normalize("NFC").replace(FOREIGN_HAT, "native Filipino salakot hat with a rounded crown");
+
 /**
  * Landscape — professional Philippine landscape photography: a wide, realistic view with a
  * cinematic sky, a smooth editorial HDR balance between light and shadow, and front-to-back
@@ -321,10 +331,11 @@ const SOLITUDE_TEMPLATE = (subject: string) =>
  */
 const LANDSCAPE_TEMPLATE = (subject: string) =>
   [
-    `${subject.trim().replace(/\.$/, "")}.`,
+    `${filipinoHats(subject).trim().replace(/\.$/, "")}.`,
     PHILIPPINES,
     "Style: a professional, award-quality landscape photograph — photorealistic and true to life, the kind of image published in National Geographic or a premium travel and editorial magazine; a natural, believable scene with a cinematic sky and a clean, refined editorial finish.",
     "Setting: the landscape described above, in the Philippines unless another place is named — for example rice terraces, volcanoes and mountain ranges, limestone karsts and lagoons, white-sand coves, coconut-lined coasts, rolling hills, rivers and waterfalls, farmland and barrios; keep the place and viewpoint described, and add people only if they are described (then small in the scene, natural and Filipino).",
+    "Hats: if a person in the scene wears or needs a hat (farmers, fishers and anyone working outdoors in the sun), it is always a native Filipino hat — a wide-brimmed salakot, buri, anahaw or straw farmer's hat with a rounded, dome-shaped crown, or a woven buntal hat — and never a Vietnamese nón lá or any pointed, cone-shaped hat, whatever else is described; a scene with no people has no hats, and no person is added because of this line.",
     "Camera and lens: flagship high-resolution camera (Hasselblad X2D 100MP / Phase One IQ4 / Sony A7R V / Nikon Z8 class) on a sturdy tripod at base ISO (ISO 64–100), with a premium wide-angle to normal landscape lens (16–35mm or 24–70mm, Zeiss / Leica / Sony GM class) stopped down to f/8–f/11 for maximum sharpness; focused at the hyperfocal distance so everything from the nearest foreground rock or leaf to the far horizon is critically sharp; straight horizon, corrected verticals, no distortion.",
     "Composition: a wide, carefully composed landscape with strong layered depth — a clear foreground interest (rocks, grasses, a path, terraces, water or a tree), a defined middle ground and a far background of hills, mountains, sea or sky; leading lines and natural curves guiding the eye; the horizon placed on a third, with generous space for the sky.",
     "Sky: a cinematic, dramatic but realistic sky — sculpted cumulus or layered clouds catching warm light, rich colour and gradation (golden hour, sunrise or sunset glow, or clear deep blue with textured clouds, as fits the scene), sunbeams breaking through where natural; detailed and believable, never a pasted-in or fantasy sky.",
@@ -334,7 +345,7 @@ const LANDSCAPE_TEMPLATE = (subject: string) =>
     "Colour grade: rich yet natural, true-to-life colour — lush greens of rice fields and forest, clean turquoise and blue water where there is any, warm earth and sand tones, a sky with natural warm and cool gradation; moderate, realistic saturation with no neon or oversaturated colours; accurate white balance.",
     "Mood: awe-inspiring, peaceful and inviting; a breathtaking, real place in the Philippines that makes you want to be there.",
     NATURAL_ANATOMY,
-    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, shallow depth of field, background blur or bokeh, soft or out-of-focus foreground or horizon, flat or dull grey sky, pasted-in or fantasy sky, blown-out sky or sun, crushed black shadows, overcooked HDR halos or grey flat tones, oversaturated or neon colours, tilted horizon, heavy vignette, haze that hides the landscape, film grain, digital noise, over-sharpening, CGI or illustration look, cluttered tourist crowds, readable text, watermarks, logos.`,
+    `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, any conical, pointed or Vietnamese hat on anyone, even if mentioned, shallow depth of field, background blur or bokeh, soft or out-of-focus foreground or horizon, flat or dull grey sky, pasted-in or fantasy sky, blown-out sky or sun, crushed black shadows, overcooked HDR halos or grey flat tones, oversaturated or neon colours, tilted horizon, heavy vignette, haze that hides the landscape, film grain, digital noise, over-sharpening, CGI or illustration look, cluttered tourist crowds, readable text, watermarks, logos.`,
   ].join("\n");
 
 /** A prompt naming smoke or something that makes it gets PORTRAIT_SMOKE; every other Portrait stays smoke-free. */
@@ -413,7 +424,15 @@ const FOCUS_TEMPLATE = (subject: string) =>
     `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}, bright or sunny daylight, a bright, pale or busy background, a plain studio backdrop, a cut-out or pasted-in look, ${STROBE_AVOID}, harsh shadows on the face, a dark or underlit face, silhouettes, eyes lost in shadow, blown-out highlights, shiny or oily skin, plastic or airbrushed skin, neon, vivid or oversaturated colours, an orange-and-teal poster look, overcooked HDR halos or glowing outlines, crunchy over-sharpening, modern clothing, modern objects, logos or printed slogans unless described, tourist-costume or stereotyped dress, smiling at the camera, a tight close-up or a wide shot with tiny figures, a soft or out-of-focus person, any softness, smoothing or painterly rendering on a person, waxy skin, undefined facial features, soft hands or feet, busy, harsh, flat or fake-looking bokeh, film grain, digital noise, cartoon, illustration or CGI look, visible brushstrokes, readable text, signatures, watermarks.`,
   ].join("\n");
 
-export const STYLES: StylePreset[] = [
+/** A lake or pond named in the prompt, unless it is ruled out ("no lake") or the sea is named too ("a lake near the sea"). */
+const LAKE = /(?<!\b(?:no|without) )\b(?:lakes?|lakeside|lakeshore|lakefront|lawa|ponds?|laguna de bay)\b/i;
+const SEA = /\b(?:sea|seaside|ocean|beach|coast|coastal)\b/i;
+
+/** Sits right after the subject, because the shared wording (bancas, and Landscape's coves and lagoons) pulls a lake toward the coast. */
+const LAKE_NOT_SEA =
+  "Body of water: the water described is an inland freshwater lake, not the sea, and this takes priority over any mention of the sea, lagoons, beaches, coasts or bancas elsewhere in this brief — it is fully enclosed by land, with the far shore, hills or mountains clearly visible across the water and closing off the view; calm water with gentle ripples in soft freshwater colours of deep green, grey-blue or brown-green, reflecting the hills, trees and sky; natural shores of grass, reeds, water plants, earth, rock and trees. It must never read as the sea, an ocean, a bay or a coast: no open horizon line over water, no breaking waves or surf, no white-sand beach, no tide marks, coral or turquoise water, no coconut-lined coast, no harbour, and no outrigger boats or motorboats unless described.";
+
+const PRESETS: StylePreset[] = [
   {
     id: "cinematic",
     finish: "crisp",
@@ -498,6 +517,15 @@ export const STYLES: StylePreset[] = [
     build: (subject) => [subject.trim(), PHILIPPINES, PEOPLE_SHARP, creamyBokeh("the natural colours of the scene"), NATURAL_ANATOMY, `Avoid: ${AI_ARTEFACTS}, ${NOT_PHILIPPINES}.`].join("\n"),
   },
 ];
+
+/** Every style places PHILIPPINES right after the subject, so the lake line goes in just before it. */
+export const STYLES: StylePreset[] = PRESETS.map((preset) => ({
+  ...preset,
+  build: (subject) => {
+    const prompt = preset.build(subject);
+    return LAKE.test(subject) && !SEA.test(subject) ? prompt.replace(PHILIPPINES, () => `${LAKE_NOT_SEA}\n${PHILIPPINES}`) : prompt;
+  },
+}));
 
 export const DEFAULT_STYLE: StyleId = "cinematic";
 

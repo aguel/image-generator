@@ -18,9 +18,9 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   portrait), with a cool teal foreground over a mostly neutral, dark, uncluttered background, soft ambient fill light on
   the face and body, natural skin and deep blacks. It asks for flagship optics: a high-resolution body with a premium fast
   24–35mm prime stopped down to f/4–f/5.6, giving an ultra-sharp subject and creamy, textured bokeh in the far background.
-  **Moonlight** is a realistic moonlit night in whatever place the prompt describes (a farm, a village, a view from
+  **Moonlight** gives any person in the scene a soft strobe fill on the face. It is a realistic moonlit night in whatever place the prompt describes (a farm, a village, a view from
   inside a house...): a full moon with a soft halo in a deep blue sky, warm amber window and lantern light, foliage framing,
-  a balanced HDR finish that keeps the subject bright, low-to-medium contrast, natural colour and a subtle painterly touch. With no place named it falls back to a tropical lagoon.
+  soft silver-blue moonlight filling the dark areas, a balanced HDR finish that keeps the subject bright, low-to-medium contrast, natural colour and a subtle painterly touch. With no place named it falls back to a tropical lagoon.
   **Night Paint** uses the same prompt-driven moonlit scene, rendered as a luminous painting (visible brushwork, soft
   painterly edges, glowing glazes, impasto highlights on the moon and lamps).
   **Melancholy** is modelled on a set of golden-hour village scenes: low backlit sun through hazy, dusty air with god rays,
@@ -34,6 +34,7 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
   **Landscape** is professional landscape photography of the Philippines: a cinematic but realistic sky, a smooth
   editorial HDR balance between light and shadow, and ultra-sharp detail from foreground to horizon (f/8–f/11, no bokeh).
+  Anyone in the scene who needs a hat wears a native Filipino one, and a Vietnamese or cone-shaped hat in your prompt is replaced.
   **Portrait** is an extreme close-up of a face in a landscape frame, lit like a studio shot: a raking side light plus soft fill
   and ambient light that open up the dark areas of the person, on a near-black background. A heavily muted grade with chocolate
   brown skin (unless you describe another complexion), high contrast only on the facial contours, and every pore and wrinkle resolved. If your prompt mentions smoke or something that makes it (a
@@ -43,6 +44,7 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   slate teal and moss green, with rich colour in their textiles. Choosing it switches the frame to Landscape 3:2.
   **Raw** sends your prompt as written, plus only the checks every style shares: the Philippines setting with Filipino
   people (unless you name another place or nationality) and anatomy (no extra limbs, heads or fingers, no distorted faces).
+  In every style, a lake or pond in your prompt stays an enclosed freshwater lake with a visible far shore, rather than drifting into a sea or bay.
 - **Aspect ratios.** Landscape 3:2 (1536×1024), Square 1:1 (1024×1024), Portrait 2:3 (1024×1536).
 - **1–8 images per run.** Each image is its own request, so tiles finish independently. Before you generate, the
   canvas previews the next batch as a wall of small coloured dots on black, with waves and a band of light moving across it.
