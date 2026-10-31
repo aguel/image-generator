@@ -38,8 +38,8 @@ See `README.md` for features, API and data layout. This file covers the conventi
   under Cache Components. Dynamic segments use `RouteContext<"/path/[id]">`, and `params` is a Promise.
 - **IDs** are validated with `isSafeId()` before touching the filesystem.
 - **Detail pass**: every generated image goes through `finishImage()` (`lib/server/finish.ts`, `sharp`) before it is saved: a
- light luminance unsharp mask whose strength comes from `StylePreset.finish` (`ultra` Portrait / Focus, `crisp` Cinematic / Solitude / Landscape, `natural` Melancholy /
- Director's Cut, `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
+ light luminance unsharp mask whose strength comes from `StylePreset.finish` (`ultra` Portrait / Focus / Director's Cut, `crisp` Cinematic / Solitude / Landscape, `natural` Melancholy,
+ `gentle` Moonlight, `none` Night Paint / Raw). It then strips all metadata (`stripPngMetadata`):
  only IHDR/PLTE/tRNS/IDAT/IEND and colour chunks are kept, so C2PA `caBX` content credentials, EXIF, XMP, text and
  time chunks never reach `data/images/`. Keep the sharpen below the level that makes halos.
 - **Backup API** endpoints must call `guardInternal(request)` first.
@@ -158,7 +158,7 @@ See `README.md` for features, API and data layout. This file covers the conventi
 ## Styles
 
 `lib/styles.ts` holds the presets: Cinematic, Moonlight, Night Paint, Melancholy, Director's Cut, Solitude, Landscape, Portrait, Focus and Raw.
-**Focus** (internal id `heritage`, kept because saved images store it) is a fine-art environmental portrait, reverse-engineered from four references documented above its template: one or two people in traditional dress, framed from about the knees or waist up by default because a full-body face is too few pixels to hold fine detail, a studio-quality soft key on location (people about two stops above a low-key slate-teal and moss background), warm brown skin, and rich colour reserved for textiles. A "Human detail" line and the `ultra` detail pass make every person ultra-sharp. It is composed for a horizontal frame (the references are mostly vertical, but the user wants landscape): its `aspect: "landscape"` switches the pickers to Landscape when chosen, and it passes a darker background to `subjectHdr(...)`.
+**Focus** (internal id `heritage`, kept because saved images store it) is a fine-art environmental portrait, reverse-engineered from four references documented above its template: one or two people in traditional dress, framed from about the knees or waist up by default because a full-body face is too few pixels to hold fine detail, a studio-quality soft key on location plus the shared `STROBE_FILL` line (the face is the brightest part, and the strobe never reaches the background) (people about two stops above a low-key slate-teal and moss background), warm brown skin, and rich colour reserved for textiles. A "Human detail" line and the `ultra` detail pass make every person ultra-sharp. It is composed for a horizontal frame (the references are mostly vertical, but the user wants landscape): its `aspect: "landscape"` switches the pickers to Landscape when chosen, and it passes a darker background to `subjectHdr(...)`.
 **Portrait** is an extreme close-up in a horizontal frame (its `aspect: "landscape"` switches the pickers to Landscape when chosen, and the user can still change it): a studio setup of a raking side key plus a "Fill and ambient light" line that opens up the dark areas of the person (never the near-black background), a heavily muted grade with chocolate brown skin unless the prompt names another complexion (a dark complexion, not dark exposure), high contrast reserved for the "Facial contours" line (skin between the contours, hair, hands and clothing stay moderate),
 and every pore and wrinkle resolved. It uses `peopleSharp(...)` but skips `SUBJECT_HDR` and `creamyBokeh`, and its detail pass is its own `ultra` level. `PORTRAIT_SMOKE` (emphasised, sculptural smoke) is added only when `SMOKE_SOURCE` finds smoke
 or something that makes it in the prompt; every other Portrait lists smoke in its Avoid line.
@@ -184,8 +184,8 @@ windows) keeps its detail; it also adds bounced fill on the subject and avoids s
 **Solitude** uses its own "Exposure" line instead: the person is brightest and the background sits about a stop lower in calm,
 soft light (a small, mostly hidden sun, thin translucent mist, no glare or hazy-white wash). **Director's Cut** also has its own
 "HDR exposure" line, because `BRIGHT_HDR`'s airy, luminous look fights its muted grade: characters lifted, background about two stops lower and dark. It calls `subjectHdr(...)` with that darker background, because the default `SUBJECT_HDR` forbids darkening it. It favours
-photorealistic texture over punch: a soft photographic curve, low local contrast on faces and fabric, a "Texture and realism" line,
-and `peopleSharp(...)` called with gentle micro-contrast. **Cinematic**, **Melancholy**, **Director's Cut**
+photorealistic texture: a soft photographic curve, strong micro-contrast only on the people, a "Texture and realism" line, `peopleSharp(...)`,
+and the shared `STROBE_FILL` / `STROBE_AVOID` / `HUMAN_DETAIL` blocks, which it shares with Focus. **Cinematic**, **Melancholy**, **Director's Cut**
 and **Solitude** also share three blocks defined above `CINEMATIC_TEMPLATE`: `SUBJECT_HDR` (an extra HDR lift on every person while
 the background keeps its own balanced exposure), `PEOPLE_SHARP` / `peopleSharp(finish)` (every person and what they hold ultra-sharp and photorealistic, from a flagship
 body and premium prime stopped down to f/4–f/5.6; `finish` sets how crisp the micro-contrast is) and `creamyBokeh(tones)`

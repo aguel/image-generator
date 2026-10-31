@@ -28,8 +28,8 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   often seen from behind.
   **Director's Cut** is a wide film still in a cavernous old workshop: characters facing each other across the frame,
   dim shafts of light from high windows, the whole frame in a strongly rustic, matte tone (aged wood, rust, burnt sienna
-  and ochre, dusty parchment lights), with earth-toned haze and visible dust speckles in the air, and brightly lit
-  characters in a pool of light, with the surroundings falling away into dark umber shadow.
+  and ochre, dusty parchment lights), with earth-toned haze and visible dust speckles in the air, and ultra-sharp
+  characters in a pool of light, a diffused strobe fill on their faces, with the surroundings falling away into dark umber shadow.
   **Solitude** is a wide, quiet moment of one person alone, in whatever setting the prompt describes (field, forest,
   beach, village, river...): a low sun flaring through leaves and mist, warm gold over sage greens with maroon and indigo cloth.
   **Landscape** is professional landscape photography of the Philippines: a cinematic but realistic sky, a smooth
@@ -39,7 +39,7 @@ On desktop every screen fits in a single view, with no page scrolling. A floatin
   brown skin (unless you describe another complexion), high contrast only on the facial contours, and every pore and wrinkle resolved. If your prompt mentions smoke or something that makes it (a
   pipe, a cigarette, incense), the smoke becomes a bold, curling part of the picture; otherwise there is none.
   **Focus** is a fine-art environmental portrait with the feel of an Old Master painting: one or two ultra-sharp, highly
-  detailed people in traditional dress, softly lit as if by a studio light on location, against a dark, misty background of
+  detailed people in traditional dress, softly lit as if by a studio light on location with a diffused strobe fill on the face, against a dark, misty background of
   slate teal and moss green, with rich colour in their textiles. Choosing it switches the frame to Landscape 3:2.
   **Raw** sends your prompt as written, plus only the checks every style shares: the Philippines setting with Filipino
   people (unless you name another place or nationality) and anatomy (no extra limbs, heads or fingers, no distorted faces).
