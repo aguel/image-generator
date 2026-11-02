@@ -34,7 +34,8 @@ const ordinal = (n: number) => {
 
 export function downloadImage(id: string) {
   const a = document.createElement("a");
-  a.href = `/api/images/${id}?download`;
+  // Bypass previously immutable downloads that may predate metadata cleanup.
+  a.href = `/api/images/${id}?download&metadata=2`;
   a.click();
 }
 
@@ -92,7 +93,7 @@ function DevelopingImage({ image }: { image: ImageRecord }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={soft}
-          src={`/api/images/${image.id}`}
+          src={`/api/images/${image.id}?metadata=2`}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl saturate-[0.85]"
@@ -103,7 +104,7 @@ function DevelopingImage({ image }: { image: ImageRecord }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={sharp}
-        src={`/api/images/${image.id}`}
+        src={`/api/images/${image.id}?metadata=2`}
         alt={image.prompt}
         width={image.width}
         height={image.height}
@@ -201,7 +202,7 @@ export function ImageCard({
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/images/${image.id}`}
+            src={`/api/images/${image.id}?metadata=2`}
             alt={image.prompt}
             width={image.width}
             height={image.height}

@@ -246,7 +246,7 @@ export function Studio() {
         body: "It will be removed from your gallery. Any backups you have made keep their copy.",
         confirmLabel: "Delete image",
         variant: "delete",
-        image: `/api/images/${image.id}`,
+        image: `/api/images/${image.id}?metadata=2`,
         details: [
           { label: "Style", value: getStyle(image.styleId).name },
           { label: "Size", value: `${image.width} × ${image.height}` },

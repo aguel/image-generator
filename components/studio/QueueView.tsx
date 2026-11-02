@@ -174,7 +174,7 @@ function JobRow({
         {job.status === "done" && job.image ? (
           <button type="button" onClick={onOpen} aria-label="View image" data-hover="off" className="h-full w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/images/${job.image.id}`} alt="" className="h-full w-full object-cover" />
+            <img src={`/api/images/${job.image.id}?metadata=2`} alt="" className="h-full w-full object-cover" />
           </button>
         ) : job.status === "running" ? (
           <Activity size={24} label="Generating" />
@@ -391,7 +391,7 @@ export function QueueView({
                     style={{ marginLeft: i ? -6 : 0, zIndex: 10 - i }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/api/images/${j.image!.id}`} alt="" className="h-full w-full object-cover" />
+                    <img src={`/api/images/${j.image!.id}?metadata=2`} alt="" className="h-full w-full object-cover" />
                   </button>
                 ))}
                 {done.length > 7 && (

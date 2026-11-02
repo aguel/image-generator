@@ -1,25 +1,34 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { connection } from "next/server";
 import { IMAGES_DIR, isSafeId, readLibrary, removeImage } from "@/lib/server/store";
 import { forgetImage } from "@/lib/server/queue";
+import { cleanImageMetadata } from "@/lib/server/finish";
 
 export async function GET(request: Request, ctx: RouteContext<"/api/images/[id]">) {
+  await connection();
   const { id } = await ctx.params;
   if (!isSafeId(id)) return new Response("Not found", { status: 404 });
   const record = (await readLibrary()).find((r) => r.id === id);
   if (!record) return new Response("Not found", { status: 404 });
+  let stored: Buffer;
   try {
-    const bytes = await readFile(join(IMAGES_DIR, record.file));
+    stored = await readFile(join(IMAGES_DIR, record.file));
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
+  try {
+    const bytes = await cleanImageMetadata(stored);
     const download = new URL(request.url).searchParams.has("download");
     return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "no-store",
         ...(download ? { "Content-Disposition": `attachment; filename="darkroom-${id}.png"` } : {}),
       },
     });
   } catch {
-    return new Response("Not found", { status: 404 });
+    return new Response("Image metadata cleanup failed.", { status: 500, headers: { "Cache-Control": "no-store" } });
   }
 }
 

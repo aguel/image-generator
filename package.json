@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "node scripts/serve.mjs start",
     "lint": "eslint",
+    "test": "node --conditions=react-server --experimental-strip-types --test lib/server/*.test.mjs",
+    "images:audit": "node --conditions=react-server --experimental-strip-types scripts/image-metadata.mjs",
+    "images:clean": "node --conditions=react-server --experimental-strip-types scripts/image-metadata.mjs --clean",
     "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {

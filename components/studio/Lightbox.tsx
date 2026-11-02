@@ -357,7 +357,7 @@ export function Lightbox({
                 <img
                   key={image.id}
                   ref={imgRef}
-                  src={`/api/images/${image.id}`}
+                  src={`/api/images/${image.id}?metadata=2`}
                   alt={image.prompt}
                   width={image.width}
                   height={image.height}
@@ -387,7 +387,7 @@ export function Lightbox({
                 title="Click to move the view"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/images/${image.id}`} alt="" className="h-full w-full object-cover opacity-60" draggable={false} />
+                <img src={`/api/images/${image.id}?metadata=2`} alt="" className="h-full w-full object-cover opacity-60" draggable={false} />
                 <span
                   className="pointer-events-none absolute rounded-[3px] bg-white/15 outline outline-[1.5px] outline-white"
                   style={{ left: `${nav.l * 100}%`, top: `${nav.t * 100}%`, width: `${(nav.r - nav.l) * 100}%`, height: `${(nav.b - nav.t) * 100}%` }}
@@ -434,7 +434,7 @@ export function Lightbox({
                       style={{ aspectRatio: `${img.width} / ${img.height}` }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`/api/images/${img.id}`} alt="" loading="lazy" className="h-full w-full object-cover" draggable={false} />
+                      <img src={`/api/images/${img.id}?metadata=2`} alt="" loading="lazy" className="h-full w-full object-cover" draggable={false} />
                     </button>
                   );
                 })}
